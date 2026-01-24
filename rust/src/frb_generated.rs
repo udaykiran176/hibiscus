@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 474530885;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1642697;
 
 // Section: executor
 
@@ -117,7 +117,8 @@ fn wire__crate__api__user__add_to_favorites_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_video_code = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             let api_user_id = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
@@ -125,7 +126,8 @@ fn wire__crate__api__user__add_to_favorites_impl(
                     (move || async move {
                         let output_ok = crate::api::user::add_to_favorites(
                             api_video_code,
-                            api_csrf_token,
+                            api_form_token,
+                            api_x_csrf_token,
                             api_user_id,
                         )
                         .await?;
@@ -547,7 +549,8 @@ fn wire__crate__api__user__delete_from_list_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_list_type = <String>::sse_decode(&mut deserializer);
             let api_video_code = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -555,7 +558,8 @@ fn wire__crate__api__user__delete_from_list_impl(
                         let output_ok = crate::api::user::delete_from_list(
                             api_list_type,
                             api_video_code,
-                            api_csrf_token,
+                            api_form_token,
+                            api_x_csrf_token,
                         )
                         .await?;
                         Ok(output_ok)
@@ -882,6 +886,41 @@ fn wire__crate__api__search__get_filter_options_impl(
         },
     )
 }
+fn wire__crate__api__settings__get_flutter_settings_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_flutter_settings",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::settings::get_flutter_settings().await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__search__get_home_videos_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -990,7 +1029,7 @@ fn wire__crate__api__download__get_local_video_path_impl(
         },
     )
 }
-fn wire__crate__api__user__get_login_csrf_token_impl(
+fn wire__crate__api__user__get_login_form_token_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -998,7 +1037,7 @@ fn wire__crate__api__user__get_login_csrf_token_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "get_login_csrf_token",
+            debug_name: "get_login_form_token",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -1016,7 +1055,7 @@ fn wire__crate__api__user__get_login_csrf_token_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::user::get_login_csrf_token().await?;
+                        let output_ok = crate::api::user::get_login_form_token().await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1055,6 +1094,42 @@ fn wire__crate__api__user__get_my_list_impl(
                     (move || async move {
                         let output_ok =
                             crate::api::user::get_my_list(api_list_type, api_page).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__user__get_my_subscriptions_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_my_subscriptions",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_page = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::user::get_my_subscriptions(api_page).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1585,14 +1660,19 @@ fn wire__crate__api__user__login_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_email = <String>::sse_decode(&mut deserializer);
             let api_password = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok =
-                            crate::api::user::login(api_email, api_password, api_csrf_token)
-                                .await?;
+                        let output_ok = crate::api::user::login(
+                            api_email,
+                            api_password,
+                            api_form_token,
+                            api_x_csrf_token,
+                        )
+                        .await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1773,7 +1853,8 @@ fn wire__crate__api__user__remove_from_favorites_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_video_code = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             let api_user_id = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
@@ -1781,7 +1862,8 @@ fn wire__crate__api__user__remove_from_favorites_impl(
                     (move || async move {
                         let output_ok = crate::api::user::remove_from_favorites(
                             api_video_code,
-                            api_csrf_token,
+                            api_form_token,
+                            api_x_csrf_token,
                             api_user_id,
                         )
                         .await?;
@@ -1893,6 +1975,43 @@ fn wire__crate__api__download__resume_download_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
                         let output_ok = crate::api::download::resume_download(api_task_id).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__settings__save_flutter_settings_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "save_flutter_settings",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_json = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::settings::save_flutter_settings(api_json).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -2216,7 +2335,8 @@ fn wire__crate__api__user__subscribe_author_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_artist_id = <String>::sse_decode(&mut deserializer);
             let api_user_id = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -2224,7 +2344,8 @@ fn wire__crate__api__user__subscribe_author_impl(
                         let output_ok = crate::api::user::subscribe_author(
                             api_artist_id,
                             api_user_id,
-                            api_csrf_token,
+                            api_form_token,
+                            api_x_csrf_token,
                         )
                         .await?;
                         Ok(output_ok)
@@ -2297,7 +2418,8 @@ fn wire__crate__api__user__unsubscribe_author_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_artist_id = <String>::sse_decode(&mut deserializer);
             let api_user_id = <String>::sse_decode(&mut deserializer);
-            let api_csrf_token = <String>::sse_decode(&mut deserializer);
+            let api_form_token = <String>::sse_decode(&mut deserializer);
+            let api_x_csrf_token = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -2305,7 +2427,8 @@ fn wire__crate__api__user__unsubscribe_author_impl(
                         let output_ok = crate::api::user::unsubscribe_author(
                             api_artist_id,
                             api_user_id,
-                            api_csrf_token,
+                            api_form_token,
+                            api_x_csrf_token,
                         )
                         .await?;
                         Ok(output_ok)
@@ -2615,7 +2738,7 @@ impl SseDecode for crate::api::models::ApiFilterOptions {
 impl SseDecode for crate::api::models::ApiHomePage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_csrfToken = <Option<String>>::sse_decode(deserializer);
+        let mut var_formToken = <Option<String>>::sse_decode(deserializer);
         let mut var_avatarUrl = <Option<String>>::sse_decode(deserializer);
         let mut var_username = <Option<String>>::sse_decode(deserializer);
         let mut var_banner = <Option<crate::api::models::ApiBanner>>::sse_decode(deserializer);
@@ -2625,7 +2748,7 @@ impl SseDecode for crate::api::models::ApiHomePage {
             <Vec<crate::api::models::ApiVideoCard>>::sse_decode(deserializer);
         let mut var_sections = <Vec<crate::api::models::ApiHomeSection>>::sse_decode(deserializer);
         return crate::api::models::ApiHomePage {
-            csrf_token: var_csrfToken,
+            form_token: var_formToken,
             avatar_url: var_avatarUrl,
             username: var_username,
             banner: var_banner,
@@ -2798,6 +2921,22 @@ impl SseDecode for crate::api::models::ApiSeriesVideo {
     }
 }
 
+impl SseDecode for crate::api::models::ApiSubscriptionsPage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_authors = <Vec<crate::api::models::ApiAuthorInfo>>::sse_decode(deserializer);
+        let mut var_videos = <Vec<crate::api::models::ApiVideoCard>>::sse_decode(deserializer);
+        let mut var_page = <u32>::sse_decode(deserializer);
+        let mut var_hasNext = <bool>::sse_decode(deserializer);
+        return crate::api::models::ApiSubscriptionsPage {
+            authors: var_authors,
+            videos: var_videos,
+            page: var_page,
+            has_next: var_hasNext,
+        };
+    }
+}
+
 impl SseDecode for crate::api::models::ApiTagGroup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2867,7 +3006,7 @@ impl SseDecode for crate::api::models::ApiVideoDetail {
         let mut var_series = <Option<crate::api::models::ApiSeriesInfo>>::sse_decode(deserializer);
         let mut var_relatedVideos =
             <Vec<crate::api::models::ApiVideoCard>>::sse_decode(deserializer);
-        let mut var_csrfToken = <Option<String>>::sse_decode(deserializer);
+        let mut var_formToken = <Option<String>>::sse_decode(deserializer);
         let mut var_currentUserId = <Option<String>>::sse_decode(deserializer);
         let mut var_isFav = <bool>::sse_decode(deserializer);
         let mut var_favTimes = <Option<i32>>::sse_decode(deserializer);
@@ -2889,7 +3028,7 @@ impl SseDecode for crate::api::models::ApiVideoDetail {
             qualities: var_qualities,
             series: var_series,
             related_videos: var_relatedVideos,
-            csrf_token: var_csrfToken,
+            form_token: var_formToken,
             current_user_id: var_currentUserId,
             is_fav: var_isFav,
             fav_times: var_favTimes,
@@ -3346,67 +3485,77 @@ fn pde_ffi_dispatcher_primary_impl(
         ),
         22 => wire__crate__api__user__get_favorites_impl(port, ptr, rust_vec_len, data_len),
         23 => wire__crate__api__search__get_filter_options_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__search__get_home_videos_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__search__get_homepage_impl(port, ptr, rust_vec_len, data_len),
-        26 => {
+        24 => {
+            wire__crate__api__settings__get_flutter_settings_impl(port, ptr, rust_vec_len, data_len)
+        }
+        25 => wire__crate__api__search__get_home_videos_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__search__get_homepage_impl(port, ptr, rust_vec_len, data_len),
+        27 => {
             wire__crate__api__download__get_local_video_path_impl(port, ptr, rust_vec_len, data_len)
         }
-        27 => wire__crate__api__user__get_login_csrf_token_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__user__get_my_list_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__user__get_play_history_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__settings__get_settings_impl(port, ptr, rust_vec_len, data_len),
-        31 => {
+        28 => wire__crate__api__user__get_login_form_token_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__user__get_my_list_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__user__get_my_subscriptions_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__user__get_play_history_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__settings__get_settings_impl(port, ptr, rust_vec_len, data_len),
+        33 => {
             wire__crate__api__user__get_subscribed_authors_impl(port, ptr, rust_vec_len, data_len)
         }
-        32 => wire__crate__api__init__get_version_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__video__get_video_comments_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__video__get_video_detail_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__user__get_video_progress_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__video__get_video_url_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__init__init_app_impl(port, ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__settings__init_app_impl(port, ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__user__is_logged_in_impl(port, ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__video__like_comment_impl(port, ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__user__login_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__user__logout_impl(port, ptr, rust_vec_len, data_len),
-        45 => {
+        34 => wire__crate__api__init__get_version_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__video__get_video_comments_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__video__get_video_detail_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__user__get_video_progress_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__video__get_video_url_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__init__init_app_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__settings__init_app_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__user__is_logged_in_impl(port, ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__video__like_comment_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__user__login_impl(port, ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__user__logout_impl(port, ptr, rust_vec_len, data_len),
+        47 => {
             wire__crate__api__download__pause_all_downloads_impl(port, ptr, rust_vec_len, data_len)
         }
-        46 => wire__crate__api__download__pause_download_impl(port, ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__video__post_comment_impl(port, ptr, rust_vec_len, data_len),
-        48 => wire__crate__api__user__remove_from_favorites_impl(port, ptr, rust_vec_len, data_len),
-        49 => {
+        48 => wire__crate__api__download__pause_download_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__video__post_comment_impl(port, ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__user__remove_from_favorites_impl(port, ptr, rust_vec_len, data_len),
+        51 => {
             wire__crate__api__video__remove_from_favorites_impl(port, ptr, rust_vec_len, data_len)
         }
-        50 => {
+        52 => {
             wire__crate__api__download__resume_all_downloads_impl(port, ptr, rust_vec_len, data_len)
         }
-        51 => wire__crate__api__download__resume_download_impl(port, ptr, rust_vec_len, data_len),
-        52 => wire__crate__api__settings__save_settings_impl(port, ptr, rust_vec_len, data_len),
-        53 => wire__crate__api__search__search_impl(port, ptr, rust_vec_len, data_len),
-        54 => wire__crate__api__user__set_cf_clearance_impl(port, ptr, rust_vec_len, data_len),
-        55 => wire__crate__api__init__set_cookies_impl(port, ptr, rust_vec_len, data_len),
-        56 => wire__crate__api__user__set_cookies_impl(port, ptr, rust_vec_len, data_len),
-        57 => {
+        53 => wire__crate__api__download__resume_download_impl(port, ptr, rust_vec_len, data_len),
+        54 => wire__crate__api__settings__save_flutter_settings_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        55 => wire__crate__api__settings__save_settings_impl(port, ptr, rust_vec_len, data_len),
+        56 => wire__crate__api__search__search_impl(port, ptr, rust_vec_len, data_len),
+        57 => wire__crate__api__user__set_cf_clearance_impl(port, ptr, rust_vec_len, data_len),
+        58 => wire__crate__api__init__set_cookies_impl(port, ptr, rust_vec_len, data_len),
+        59 => wire__crate__api__user__set_cookies_impl(port, ptr, rust_vec_len, data_len),
+        60 => {
             wire__crate__api__settings__set_default_quality_impl(port, ptr, rust_vec_len, data_len)
         }
-        58 => wire__crate__api__settings__set_download_concurrent_impl(
+        61 => wire__crate__api__settings__set_download_concurrent_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        59 => wire__crate__api__settings__set_proxy_impl(port, ptr, rust_vec_len, data_len),
-        60 => wire__crate__api__user__subscribe_author_impl(port, ptr, rust_vec_len, data_len),
-        61 => wire__crate__api__download__subscribe_download_progress_impl(
+        62 => wire__crate__api__settings__set_proxy_impl(port, ptr, rust_vec_len, data_len),
+        63 => wire__crate__api__user__subscribe_author_impl(port, ptr, rust_vec_len, data_len),
+        64 => wire__crate__api__download__subscribe_download_progress_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        62 => wire__crate__api__user__unsubscribe_author_impl(port, ptr, rust_vec_len, data_len),
-        63 => wire__crate__api__user__update_play_history_impl(port, ptr, rust_vec_len, data_len),
+        65 => wire__crate__api__user__unsubscribe_author_impl(port, ptr, rust_vec_len, data_len),
+        66 => wire__crate__api__user__update_play_history_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3419,7 +3568,7 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        37 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3699,7 +3848,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::ApiFilterOptions>
 impl flutter_rust_bridge::IntoDart for crate::api::models::ApiHomePage {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.csrf_token.into_into_dart().into_dart(),
+            self.form_token.into_into_dart().into_dart(),
             self.avatar_url.into_into_dart().into_dart(),
             self.username.into_into_dart().into_dart(),
             self.banner.into_into_dart().into_dart(),
@@ -3953,6 +4102,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::models::ApiSeriesVideo>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::models::ApiSubscriptionsPage {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.authors.into_into_dart().into_dart(),
+            self.videos.into_into_dart().into_dart(),
+            self.page.into_into_dart().into_dart(),
+            self.has_next.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::models::ApiSubscriptionsPage
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::models::ApiSubscriptionsPage>
+    for crate::api::models::ApiSubscriptionsPage
+{
+    fn into_into_dart(self) -> crate::api::models::ApiSubscriptionsPage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::models::ApiTagGroup {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -4040,7 +4212,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::models::ApiVideoDetail {
             self.qualities.into_into_dart().into_dart(),
             self.series.into_into_dart().into_dart(),
             self.related_videos.into_into_dart().into_dart(),
-            self.csrf_token.into_into_dart().into_dart(),
+            self.form_token.into_into_dart().into_dart(),
             self.current_user_id.into_into_dart().into_dart(),
             self.is_fav.into_into_dart().into_dart(),
             self.fav_times.into_into_dart().into_dart(),
@@ -4275,7 +4447,7 @@ impl SseEncode for crate::api::models::ApiFilterOptions {
 impl SseEncode for crate::api::models::ApiHomePage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Option<String>>::sse_encode(self.csrf_token, serializer);
+        <Option<String>>::sse_encode(self.form_token, serializer);
         <Option<String>>::sse_encode(self.avatar_url, serializer);
         <Option<String>>::sse_encode(self.username, serializer);
         <Option<crate::api::models::ApiBanner>>::sse_encode(self.banner, serializer);
@@ -4386,6 +4558,16 @@ impl SseEncode for crate::api::models::ApiSeriesVideo {
     }
 }
 
+impl SseEncode for crate::api::models::ApiSubscriptionsPage {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::models::ApiAuthorInfo>>::sse_encode(self.authors, serializer);
+        <Vec<crate::api::models::ApiVideoCard>>::sse_encode(self.videos, serializer);
+        <u32>::sse_encode(self.page, serializer);
+        <bool>::sse_encode(self.has_next, serializer);
+    }
+}
+
 impl SseEncode for crate::api::models::ApiTagGroup {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -4434,7 +4616,7 @@ impl SseEncode for crate::api::models::ApiVideoDetail {
         <Vec<crate::api::models::ApiVideoQuality>>::sse_encode(self.qualities, serializer);
         <Option<crate::api::models::ApiSeriesInfo>>::sse_encode(self.series, serializer);
         <Vec<crate::api::models::ApiVideoCard>>::sse_encode(self.related_videos, serializer);
-        <Option<String>>::sse_encode(self.csrf_token, serializer);
+        <Option<String>>::sse_encode(self.form_token, serializer);
         <Option<String>>::sse_encode(self.current_user_id, serializer);
         <bool>::sse_encode(self.is_fav, serializer);
         <Option<i32>>::sse_encode(self.fav_times, serializer);

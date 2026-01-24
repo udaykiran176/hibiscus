@@ -64,7 +64,7 @@ pub(crate) struct VideoDetail {
     pub video_sources: Vec<VideoSource>,
     pub related_videos: Vec<VideoCard>,
     pub creator: Option<Creator>,
-    pub csrf_token: Option<String>,
+    pub form_token: Option<String>,
     pub current_user_id: Option<String>,
     pub is_fav: bool,
     pub fav_times: Option<i32>,
@@ -87,6 +87,7 @@ pub(crate) struct Creator {
     pub name: String,
     pub avatar_url: Option<String>,
     pub genre: Option<String>,
+    pub is_subscribed: bool,
 }
 
 /// 播放列表信息
@@ -113,7 +114,7 @@ pub(crate) struct MyListItem {
 /// 首页数据
 #[derive(Debug, Clone)]
 pub(crate) struct HomePage {
-    pub csrf_token: Option<String>,
+    pub form_token: Option<String>,
     pub avatar_url: Option<String>,
     pub username: Option<String>,
     pub banner: Option<Banner>,
@@ -134,7 +135,7 @@ pub(crate) struct Banner {
 #[derive(Debug, Clone)]
 pub(crate) struct MyListItems {
     pub videos: Vec<VideoCard>,
-    pub csrf_token: Option<String>,
+    pub form_token: Option<String>,
     pub description: Option<String>,
 }
 
@@ -317,9 +318,7 @@ fn parse_pagination(document: &Html) -> (i32, i32, bool) {
             .filter_map(|a| a.text().collect::<String>().trim().parse::<i32>().ok())
             .max()
             .unwrap_or(1);
-        
-        let next_selector = Selector::parse(".next:not(.disabled)").unwrap();
-        let has_next = pagination.select(&next_selector).next().is_some();
+        let has_next = current < max_page;
         
         (current, max_page, has_next)
     } else {
@@ -331,15 +330,23 @@ fn parse_pagination(document: &Html) -> (i32, i32, bool) {
 pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
     let document = Html::parse_document(html);
     
-    // CSRF Token
-    let token_selector = Selector::parse("input[name=_token]").unwrap();
-    let csrf_token = document.select(&token_selector).next()
+    // HTML 表单 token：input[name=_token]
+    let token_selector_subscribe = Selector::parse("#video-subscribe-form input[name=_token]").unwrap();
+    let token_selector_any = Selector::parse("input[name=_token]").unwrap();
+    let form_token = document
+        .select(&token_selector_subscribe)
+        .next()
+        .or_else(|| document.select(&token_selector_any).next())
         .and_then(|el| el.value().attr("value"))
         .map(|s| s.to_string());
     
     // 当前用户 ID
-    let user_id_selector = Selector::parse("input[name=like-user-id]").unwrap();
-    let current_user_id = document.select(&user_id_selector).next()
+    let user_id_selector_subscribe = Selector::parse("#video-subscribe-form input[name=subscribe-user-id]").unwrap();
+    let user_id_selector_like = Selector::parse("input[name=like-user-id]").unwrap();
+    let current_user_id = document
+        .select(&user_id_selector_subscribe)
+        .next()
+        .or_else(|| document.select(&user_id_selector_like).next())
         .and_then(|el| el.value().attr("value"))
         .map(|s| s.to_string());
     
@@ -353,7 +360,8 @@ pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
     let like_status_selector = Selector::parse("[name=like-status]").unwrap();
     let is_fav = document.select(&like_status_selector).next()
         .and_then(|el| el.value().attr("value"))
-        .map(|v| !v.is_empty())
+        .and_then(|v| v.parse::<i32>().ok())
+        .map(|v| v == 1)
         .unwrap_or(false);
     
     // 收藏数
@@ -428,7 +436,7 @@ pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
         video_sources,
         related_videos,
         creator,
-        csrf_token,
+        form_token,
         current_user_id,
         is_fav,
         fav_times,
@@ -528,12 +536,21 @@ fn parse_creator(document: &Html) -> Option<Creator> {
         .and_then(|el| el.value().attr("value"))
         .map(|s| s.to_string())
         .unwrap_or_default();
+
+    // 是否已订阅（从订阅表单 hidden input value 判断，未订阅时通常为空）
+    let subscribed_selector = Selector::parse("#video-subscribe-form input[name=subscribe-status]").unwrap();
+    let subscribed_value = document.select(&subscribed_selector).next()
+        .and_then(|el| el.value().attr("value"))
+        .unwrap_or("")
+        .trim();
+    let is_subscribed = subscribed_value == "1";
     
     Some(Creator {
         id,
         name,
         avatar_url,
         genre,
+        is_subscribed,
     })
 }
 
@@ -707,7 +724,7 @@ pub fn parse_homepage(html: &str) -> Result<HomePage> {
     
     // CSRF Token
     let token_selector = Selector::parse("input[name=_token]").unwrap();
-    let csrf_token = document.select(&token_selector).next()
+    let form_token = document.select(&token_selector).next()
         .and_then(|el| el.value().attr("value"))
         .map(|s| s.to_string());
     
@@ -763,7 +780,7 @@ pub fn parse_homepage(html: &str) -> Result<HomePage> {
     }
     
     Ok(HomePage {
-        csrf_token,
+        form_token,
         avatar_url,
         username,
         banner,
@@ -833,7 +850,7 @@ pub fn parse_my_list_items(html: &str) -> Result<MyListItems> {
     
     // CSRF Token
     let token_selector = Selector::parse("input[name=_token]").unwrap();
-    let csrf_token = document.select(&token_selector).next()
+    let form_token = document.select(&token_selector).next()
         .and_then(|el| el.value().attr("value"))
         .map(|s| s.to_string());
     
@@ -883,9 +900,132 @@ pub fn parse_my_list_items(html: &str) -> Result<MyListItems> {
     
     Ok(MyListItems {
         videos,
-        csrf_token,
+        form_token,
         description,
     })
+}
+
+/// 解析订阅页（订阅作者 + 订阅更新视频）
+pub fn parse_subscriptions_page(html: &str) -> Result<(Vec<(String, Option<String>)>, Vec<VideoCard>, u32)> {
+    let document = Html::parse_document(html);
+
+    // 解析最大页数
+    let page_re = Regex::new(r"\?page=(\d+)").unwrap();
+    let page_link_sel = Selector::parse("ul.pagination a.page-link[href]").unwrap();
+    let mut max_page: u32 = 1;
+    for a in document.select(&page_link_sel) {
+        if let Some(href) = a.value().attr("href") {
+            if let Some(caps) = page_re.captures(href) {
+                if let Some(m) = caps.get(1) {
+                    if let Ok(v) = m.as_str().parse::<u32>() {
+                        max_page = max_page.max(v);
+                    }
+                }
+            }
+        }
+    }
+
+    // 解析作者
+    let mut authors: Vec<(String, Option<String>)> = Vec::new();
+    let nav_sel = Selector::parse("div.subscriptions-nav").unwrap();
+    let artist_card_sel = Selector::parse("div.subscriptions-artist-card").unwrap();
+    let artist_name_sel = Selector::parse("div.card-mobile-title").unwrap();
+    let img_sel = Selector::parse("img").unwrap();
+    if let Some(nav) = document.select(&nav_sel).next() {
+        for card in nav.select(&artist_card_sel) {
+            let name = card
+                .select(&artist_name_sel)
+                .next()
+                .map(|e| e.text().collect::<String>().trim().to_string());
+            let imgs: Vec<_> = card.select(&img_sel).collect();
+            let avatar = imgs
+                .get(1)
+                .or(imgs.first())
+                .and_then(|img| img.value().attr("src"))
+                .map(make_absolute_url);
+            if let Some(name) = name {
+                if !name.is_empty() {
+                    authors.push((name, avatar));
+                }
+            }
+        }
+    }
+
+    // 解析视频
+    let mut videos: Vec<VideoCard> = Vec::new();
+    let content_sel = Selector::parse("div.content-padding-new").unwrap();
+    let video_sel = Selector::parse("div[class^=video-item-container]").unwrap();
+    let link_sel = Selector::parse("a[class^=video-link]").unwrap();
+    let cover_sel = Selector::parse("img[class^=main-thumb]").unwrap();
+    let thumb_sel = Selector::parse("div[class^=thumb-container]").unwrap();
+    let duration_sel = Selector::parse("div[class^=duration]").unwrap();
+    let stat_sel = Selector::parse("div[class^=stat-item]").unwrap();
+    let subtitle_sel = Selector::parse("div.subtitle a").unwrap();
+
+    if let Some(root) = document.select(&content_sel).next() {
+        for item in root.select(&video_sel) {
+            let href = item
+                .select(&link_sel)
+                .next()
+                .and_then(|a| a.value().attr("href"))
+                .unwrap_or("");
+            let id = extract_video_code(href);
+
+            let cover_url = item
+                .select(&cover_sel)
+                .next()
+                .and_then(|img| img.value().attr("src"))
+                .map(make_absolute_url);
+
+            let title = item
+                .value()
+                .attr("title")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+
+            let thumb = item.select(&thumb_sel).next();
+            let duration = thumb
+                .as_ref()
+                .and_then(|t| t.select(&duration_sel).next())
+                .map(|d| d.text().collect::<String>().trim().to_string())
+                .unwrap_or_default();
+            let views = thumb
+                .as_ref()
+                .map(|t| t.select(&stat_sel).collect::<Vec<_>>())
+                .and_then(|stats| stats.get(1).map(|e| e.text().collect::<String>().trim().to_string()))
+                .unwrap_or_default();
+
+            let subtitle = item
+                .select(&subtitle_sel)
+                .next()
+                .map(|e| e.text().collect::<String>().trim().to_string())
+                .unwrap_or_default();
+            let (artist, upload_time) = if subtitle.contains('•') {
+                let parts: Vec<_> = subtitle.split('•').map(|s| s.trim().to_string()).collect();
+                let a = parts.get(0).cloned().filter(|s| !s.is_empty());
+                let u = parts.get(1).cloned().filter(|s| !s.is_empty());
+                (a, u)
+            } else {
+                (None, None)
+            };
+
+            if let (Some(id), Some(title), Some(cover_url)) = (id, title, cover_url) {
+                videos.push(VideoCard {
+                    id,
+                    title,
+                    cover_url,
+                    duration,
+                    views,
+                    artist,
+                    upload_time: upload_time.clone(),
+                    tags: vec![],
+                    upload_date: upload_time,
+                });
+            }
+        }
+    }
+
+    Ok((authors, videos, max_page))
 }
 
 // ============================================================================

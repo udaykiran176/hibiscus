@@ -1,7 +1,7 @@
 // 用户相关 API
 
 use flutter_rust_bridge::frb;
-use crate::api::models::{ApiUserInfo, ApiFavoriteList, ApiPlayHistoryList, ApiPlayHistory, ApiVideoCard, ApiCloudflareChallenge};
+use crate::api::models::{ApiUserInfo, ApiFavoriteList, ApiPlayHistoryList, ApiPlayHistory, ApiVideoCard, ApiCloudflareChallenge, ApiSubscriptionsPage, ApiAuthorInfo};
 use crate::core::{network, storage};
 use crate::core::parser;
 
@@ -103,14 +103,19 @@ pub async fn get_my_list(list_type: String, page: u32) -> anyhow::Result<ApiFavo
 
 /// 添加到收藏
 #[frb]
-pub async fn add_to_favorites(video_code: String, csrf_token: String, user_id: String) -> anyhow::Result<bool> {
+pub async fn add_to_favorites(
+    video_code: String,
+    form_token: String,
+    x_csrf_token: String,
+    user_id: String,
+) -> anyhow::Result<bool> {
     let url = format!("{}/like", network::BASE_URL);
     let body = format!(
         "like-foreign-id={}&like-status=1&_token={}&like-user-id={}&like-is-positive=1",
-        video_code, csrf_token, user_id
+        video_code, form_token, user_id
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
@@ -124,14 +129,19 @@ pub async fn add_to_favorites(video_code: String, csrf_token: String, user_id: S
 
 /// 从收藏移除
 #[frb]
-pub async fn remove_from_favorites(video_code: String, csrf_token: String, user_id: String) -> anyhow::Result<bool> {
+pub async fn remove_from_favorites(
+    video_code: String,
+    form_token: String,
+    x_csrf_token: String,
+    user_id: String,
+) -> anyhow::Result<bool> {
     let url = format!("{}/like", network::BASE_URL);
     let body = format!(
         "like-foreign-id={}&like-status=0&_token={}&like-user-id={}&like-is-positive=1",
-        video_code, csrf_token, user_id
+        video_code, form_token, user_id
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
@@ -148,7 +158,8 @@ pub async fn remove_from_favorites(video_code: String, csrf_token: String, user_
 pub async fn delete_from_list(
     list_type: String,
     video_code: String,
-    csrf_token: String,
+    form_token: String,
+    x_csrf_token: String,
 ) -> anyhow::Result<bool> {
     let url = format!("{}/deletePlayitem", network::BASE_URL);
     let body = format!(
@@ -156,7 +167,7 @@ pub async fn delete_from_list(
         list_type, video_code
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
@@ -174,11 +185,18 @@ pub async fn get_subscribed_authors(page: u32) -> anyhow::Result<Vec<crate::api:
     let url = format!("{}/subscriptions?page={}", network::BASE_URL, page);
     tracing::info!("Getting subscriptions: {}", url);
     
-    // TODO: 实现解析订阅页面
     match network::get(&url).await {
-        Ok(_html) => {
-            // TODO: 解析订阅列表
-            Ok(vec![])
+        Ok(html) => {
+            let (authors, _videos, _max_page) = parser::parse_subscriptions_page(&html)?;
+            Ok(authors
+                .into_iter()
+                .map(|(name, avatar_url)| ApiAuthorInfo {
+                    id: name.clone(),
+                    name,
+                    avatar_url,
+                    is_subscribed: true,
+                })
+                .collect())
         }
         Err(e) => {
             let err_str = e.to_string();
@@ -190,20 +208,78 @@ pub async fn get_subscribed_authors(page: u32) -> anyhow::Result<Vec<crate::api:
     }
 }
 
+/// 获取我的订阅页（作者 + 订阅更新视频）
+#[frb]
+pub async fn get_my_subscriptions(page: u32) -> anyhow::Result<ApiSubscriptionsPage> {
+    let url = format!("{}/subscriptions?page={}", network::BASE_URL, page);
+    tracing::info!("Getting my subscriptions: {}", url);
+
+    match network::get(&url).await {
+        Ok(html) => {
+            let (authors, videos, max_page) = parser::parse_subscriptions_page(&html)?;
+            let authors = authors
+                .into_iter()
+                .map(|(name, avatar_url)| ApiAuthorInfo {
+                    id: name.clone(),
+                    name,
+                    avatar_url,
+                    is_subscribed: true,
+                })
+                .collect::<Vec<_>>();
+
+            let videos = videos
+                .into_iter()
+                .map(|v| ApiVideoCard {
+                    id: v.id,
+                    title: v.title,
+                    cover_url: v.cover_url,
+                    duration: Some(v.duration).filter(|s| !s.is_empty()),
+                    views: Some(v.views).filter(|s| !s.is_empty()),
+                    upload_date: v.upload_date,
+                    tags: v.tags,
+                })
+                .collect::<Vec<_>>();
+
+            Ok(ApiSubscriptionsPage {
+                authors,
+                videos,
+                page,
+                has_next: page < max_page,
+            })
+        }
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("CLOUDFLARE_CHALLENGE") {
+                return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+            }
+            Err(e)
+        }
+    }
+}
+
 /// 订阅作者
 #[frb]
 pub async fn subscribe_author(
     artist_id: String,
     user_id: String,
-    csrf_token: String,
+    form_token: String,
+    x_csrf_token: String,
 ) -> anyhow::Result<bool> {
+    tracing::info!(
+        "subscribe_author artist_id={} user_id={} form_token_len={} x_csrf_token_len={}",
+        artist_id,
+        user_id,
+        form_token.len(),
+        x_csrf_token.len()
+    );
     let url = format!("{}/subscribe", network::BASE_URL);
     let body = format!(
-        "_token={}&subscribe-user-id={}&subscribe-artist-id={}&subscribe-status=1",
-        csrf_token, user_id, artist_id
+        // 参考 Han1meViewer / HAR：订阅时 subscribe-status 为空；取消订阅时为 "1"
+        "_token={}&subscribe-user-id={}&subscribe-artist-id={}&subscribe-status=",
+        form_token, user_id, artist_id
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
@@ -220,15 +296,24 @@ pub async fn subscribe_author(
 pub async fn unsubscribe_author(
     artist_id: String,
     user_id: String,
-    csrf_token: String,
+    form_token: String,
+    x_csrf_token: String,
 ) -> anyhow::Result<bool> {
+    tracing::info!(
+        "unsubscribe_author artist_id={} user_id={} form_token_len={} x_csrf_token_len={}",
+        artist_id,
+        user_id,
+        form_token.len(),
+        x_csrf_token.len()
+    );
     let url = format!("{}/subscribe", network::BASE_URL);
     let body = format!(
-        "_token={}&subscribe-user-id={}&subscribe-artist-id={}&subscribe-status=0",
-        csrf_token, user_id, artist_id
+        // 参考 Han1meViewer / HAR：取消订阅时 subscribe-status 为 "1"
+        "_token={}&subscribe-user-id={}&subscribe-artist-id={}&subscribe-status=1",
+        form_token, user_id, artist_id
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => Ok(true),
         Err(e) => {
             let err_str = e.to_string();
@@ -375,9 +460,9 @@ pub async fn get_cloudflare_challenge_info() -> anyhow::Result<Option<ApiCloudfl
 // 登录相关
 // ============================================================================
 
-/// 获取登录页面的 CSRF Token
+/// 获取登录页面的表单 `_token`
 #[frb]
-pub async fn get_login_csrf_token() -> anyhow::Result<String> {
+pub async fn get_login_form_token() -> anyhow::Result<String> {
     let url = format!("{}/login", network::BASE_URL);
     tracing::info!("Getting login page: {}", url);
     
@@ -390,7 +475,7 @@ pub async fn get_login_csrf_token() -> anyhow::Result<String> {
             let token = document.select(&selector).next()
                 .and_then(|el| el.value().attr("value"))
                 .map(|s| s.to_string())
-                .ok_or_else(|| anyhow::anyhow!("Cannot find CSRF token"))?;
+                .ok_or_else(|| anyhow::anyhow!("Cannot find form _token"))?;
             
             Ok(token)
         }
@@ -406,16 +491,16 @@ pub async fn get_login_csrf_token() -> anyhow::Result<String> {
 
 /// 登录
 #[frb]
-pub async fn login(email: String, password: String, csrf_token: String) -> anyhow::Result<bool> {
+pub async fn login(email: String, password: String, form_token: String, x_csrf_token: String) -> anyhow::Result<bool> {
     let url = format!("{}/login", network::BASE_URL);
     let body = format!(
         "_token={}&email={}&password={}",
-        urlencoding::encode(&csrf_token),
+        urlencoding::encode(&form_token),
         urlencoding::encode(&email),
         urlencoding::encode(&password)
     );
     
-    match network::post_with_csrf(&url, &body, &csrf_token).await {
+    match network::post_with_x_csrf_token(&url, &body, &x_csrf_token).await {
         Ok(_) => {
             // 检查是否登录成功（再次访问 /login 应该返回 404 或重定向）
             match network::get(&format!("{}/login", network::BASE_URL)).await {

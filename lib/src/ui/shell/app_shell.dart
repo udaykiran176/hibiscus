@@ -7,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:hibiscus/src/router/router.dart';
 import 'package:hibiscus/src/ui/theme/app_theme.dart';
 import 'package:hibiscus/src/ui/pages/home_page.dart';
-import 'package:hibiscus/src/ui/pages/favorites_page.dart';
 import 'package:hibiscus/src/ui/pages/history_page.dart';
 import 'package:hibiscus/src/ui/pages/downloads_page.dart';
 import 'package:hibiscus/src/ui/pages/subscriptions_page.dart';
 import 'package:hibiscus/src/ui/pages/settings_page.dart';
+import 'package:hibiscus/src/state/nav_state.dart';
 
 /// 导航项配置
 class _NavDestination {
@@ -28,20 +28,8 @@ class _NavDestination {
   });
 }
 
-/// 主要导航项（显示在底部栏）
-const _primaryDestinations = [
-  _NavDestination(
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-    label: '首页',
-    route: AppRoutes.home,
-  ),
-  _NavDestination(
-    icon: Icons.favorite_outline,
-    selectedIcon: Icons.favorite,
-    label: '收藏',
-    route: AppRoutes.favorites,
-  ),
+/// 导航项（所有布局共用）
+const _destinations = [
   _NavDestination(
     icon: Icons.history_outlined,
     selectedIcon: Icons.history,
@@ -49,50 +37,22 @@ const _primaryDestinations = [
     route: AppRoutes.history,
   ),
   _NavDestination(
+    icon: Icons.subscriptions_outlined,
+    selectedIcon: Icons.subscriptions,
+    label: '订阅',
+    route: AppRoutes.subscriptions,
+  ),
+  _NavDestination(
+    icon: Icons.explore_outlined,
+    selectedIcon: Icons.explore,
+    label: '发现',
+    route: AppRoutes.home,
+  ),
+  _NavDestination(
     icon: Icons.download_outlined,
     selectedIcon: Icons.download,
     label: '下载',
     route: AppRoutes.downloads,
-  ),
-  _NavDestination(
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings,
-    label: '设置',
-    route: AppRoutes.settings,
-  ),
-];
-
-/// 完整导航项（显示在侧栏）
-const _allDestinations = [
-  _NavDestination(
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-    label: '首页',
-    route: AppRoutes.home,
-  ),
-  _NavDestination(
-    icon: Icons.favorite_outline,
-    selectedIcon: Icons.favorite,
-    label: '我的收藏',
-    route: AppRoutes.favorites,
-  ),
-  _NavDestination(
-    icon: Icons.history_outlined,
-    selectedIcon: Icons.history,
-    label: '播放历史',
-    route: AppRoutes.history,
-  ),
-  _NavDestination(
-    icon: Icons.download_outlined,
-    selectedIcon: Icons.download,
-    label: '下载管理',
-    route: AppRoutes.downloads,
-  ),
-  _NavDestination(
-    icon: Icons.subscriptions_outlined,
-    selectedIcon: Icons.subscriptions,
-    label: '订阅作者',
-    route: AppRoutes.subscriptions,
   ),
   _NavDestination(
     icon: Icons.settings_outlined,
@@ -118,17 +78,8 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    _pageIndex = widget.initialIndex;
+    _pageIndex = appNavState.selectedIndex.value;
     _pageController = PageController(initialPage: _pageIndex);
-  }
-
-  @override
-  void didUpdateWidget(covariant AppShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialIndex != widget.initialIndex) {
-      _pageIndex = widget.initialIndex;
-      _pageController.jumpToPage(_pageIndex);
-    }
   }
 
   @override
@@ -146,35 +97,18 @@ class _AppShellState extends State<AppShell> {
     }
     return 0;
   }
-
-  int _getPrimaryIndexFromAll(int allIndex) {
-    switch (_allDestinations[allIndex].route) {
-      case AppRoutes.home:
-        return 0;
-      case AppRoutes.favorites:
-        return 1;
-      case AppRoutes.history:
-        return 2;
-      case AppRoutes.downloads:
-        return 3;
-      case AppRoutes.settings:
-        return 4;
-      default:
-        return 0;
-    }
-  }
   
   void _onDestinationSelected(int index, List<_NavDestination> destinations) {
-    final targetIndex = _getSelectedIndex(destinations[index].route, _allDestinations);
-    setState(() => _pageIndex = targetIndex);
-    _pageController.jumpToPage(targetIndex);
+    setState(() => _pageIndex = index);
+    appNavState.setIndex(index);
+    _pageController.jumpToPage(index);
   }
   
   @override
   Widget build(BuildContext context) {
     final isDesktop = Breakpoints.isDesktop(context);
     final isTablet = Breakpoints.isTablet(context);
-    final location = _allDestinations[_pageIndex].route;
+    final location = _destinations[_pageIndex].route;
     
     // 桌面端：常驻侧栏 (NavigationDrawer 样式)
     if (isDesktop) {
@@ -194,7 +128,7 @@ class _AppShellState extends State<AppShell> {
   Widget _buildDesktopLayout(String location) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final selectedIndex = _getSelectedIndex(location, _allDestinations);
+    final selectedIndex = _getSelectedIndex(location, _destinations);
     
     return Row(
       children: [
@@ -232,9 +166,9 @@ class _AppShellState extends State<AppShell> {
                   Expanded(
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: _allDestinations.length,
+                      itemCount: _destinations.length,
                       itemBuilder: (context, index) {
-                        final dest = _allDestinations[index];
+                        final dest = _destinations[index];
                         final isSelected = index == selectedIndex;
                         
                         // 在设置项前添加分隔线
@@ -287,7 +221,7 @@ class _AppShellState extends State<AppShell> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
         ),
-        onTap: () => _onDestinationSelected(index, _allDestinations),
+                        onTap: () => _onDestinationSelected(index, _destinations),
       ),
     );
   }
@@ -296,13 +230,13 @@ class _AppShellState extends State<AppShell> {
   Widget _buildTabletLayout(String location) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final selectedIndex = _getSelectedIndex(location, _allDestinations);
+    final selectedIndex = _getSelectedIndex(location, _destinations);
     
     return Row(
       children: [
         NavigationRail(
           selectedIndex: selectedIndex,
-          onDestinationSelected: (index) => _onDestinationSelected(index, _allDestinations),
+          onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
           labelType: NavigationRailLabelType.all,
           leading: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -312,7 +246,7 @@ class _AppShellState extends State<AppShell> {
               color: colorScheme.primary,
             ),
           ),
-          destinations: _allDestinations.map((dest) {
+          destinations: _destinations.map((dest) {
             return NavigationRailDestination(
               icon: Icon(dest.icon),
               selectedIcon: Icon(dest.selectedIcon),
@@ -328,14 +262,14 @@ class _AppShellState extends State<AppShell> {
   
   /// 手机布局：底部导航栏
   Widget _buildMobileLayout(String location) {
-    final selectedIndex = _getPrimaryIndexFromAll(_pageIndex);
+    final selectedIndex = _getSelectedIndex(location, _destinations);
     
     return Scaffold(
       body: _buildPageView(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => _onDestinationSelected(index, _primaryDestinations),
-        destinations: _primaryDestinations.map((dest) {
+        onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
+        destinations: _destinations.map((dest) {
           return NavigationDestination(
             icon: Icon(dest.icon),
             selectedIcon: Icon(dest.selectedIcon),
@@ -351,11 +285,10 @@ class _AppShellState extends State<AppShell> {
       controller: _pageController,
       physics: const NeverScrollableScrollPhysics(),
       children: const [
-        HomePage(),
-        FavoritesPage(),
         HistoryPage(),
-        DownloadsPage(),
         SubscriptionsPage(),
+        HomePage(),
+        DownloadsPage(),
         SettingsPage(),
       ],
     );

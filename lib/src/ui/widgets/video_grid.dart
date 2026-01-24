@@ -40,6 +40,13 @@ class VideoGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final itemWidth = _calculateItemWidth(
+          columns: columns,
+          maxWidth: constraints.maxWidth,
+          padding: padding,
+          spacing: spacing,
+        );
+        final sizeScale = _calculateSizeScale(itemWidth);
         final childAspectRatio = _calculateChildAspectRatio(
           context: context,
           columns: columns,
@@ -47,6 +54,7 @@ class VideoGrid extends StatelessWidget {
           padding: padding,
           spacing: spacing,
           showViews: showViews,
+          sizeScale: sizeScale,
         );
 
         return GridView.builder(
@@ -68,12 +76,31 @@ class VideoGrid extends StatelessWidget {
             final video = videos[index];
             return VideoCard(
               video: video,
+              sizeScale: sizeScale,
               onTap: () => context.pushVideo(video.id),
             );
           },
         );
       },
     );
+  }
+
+  double _calculateItemWidth({
+    required int columns,
+    required double maxWidth,
+    required EdgeInsets padding,
+    required double spacing,
+  }) {
+    if (columns <= 0 || maxWidth <= 0) return 0;
+    final available = maxWidth - padding.horizontal - spacing * (columns - 1);
+    return available > 0 ? available / columns : 0;
+  }
+
+  double _calculateSizeScale(double itemWidth) {
+    if (itemWidth <= 0) return 1.0;
+    // 以 180dp 卡片宽度为基准，随宽度轻微缩放文字/间距
+    final raw = itemWidth / 180.0;
+    return raw.clamp(0.9, 1.2);
   }
 
   double _calculateChildAspectRatio({
@@ -83,30 +110,43 @@ class VideoGrid extends StatelessWidget {
     required EdgeInsets padding,
     required double spacing,
     required bool showViews,
+    required double sizeScale,
   }) {
     if (columns <= 0 || maxWidth <= 0) return 1.0;
 
-    final available = maxWidth - padding.horizontal - spacing * (columns - 1);
-    final itemWidth = available / columns;
+    final itemWidth = _calculateItemWidth(
+      columns: columns,
+      maxWidth: maxWidth,
+      padding: padding,
+      spacing: spacing,
+    );
     if (itemWidth <= 0) return 1.0;
 
     // 卡片高度 = 封面(16:9) + 信息区(文字+padding)
     final coverHeight = itemWidth * 9 / 16;
-    final infoHeight = _estimateInfoHeight(context, showViews: showViews);
-    final itemHeight = coverHeight + infoHeight + 4;
+    final infoHeight = _estimateInfoHeight(
+      context,
+      showViews: showViews,
+      sizeScale: sizeScale,
+    );
+    final itemHeight = coverHeight + infoHeight + 4 * sizeScale;
 
     return itemWidth / itemHeight;
   }
 
-  double _estimateInfoHeight(BuildContext context, {required bool showViews}) {
-    const paddingVertical = 8.0 * 2;
-    const betweenText = 4.0;
+  double _estimateInfoHeight(
+    BuildContext context, {
+    required bool showViews,
+    required double sizeScale,
+  }) {
+    final paddingVertical = 8.0 * 2 * sizeScale;
+    final betweenText = 4.0 * sizeScale;
 
     final theme = Theme.of(context);
     final scaler = MediaQuery.textScalerOf(context);
 
     double lineHeight(TextStyle? style, double fallback) {
-      final fontSize = style?.fontSize ?? fallback;
+      final fontSize = (style?.fontSize ?? fallback) * sizeScale;
       final heightFactor = style?.height ?? 1.2;
       final scaledFontSize = scaler.scale(fontSize);
       return scaledFontSize * heightFactor;

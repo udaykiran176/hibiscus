@@ -6,6 +6,7 @@ import 'package:hibiscus/src/rust/api/models.dart';
 import 'package:hibiscus/src/ui/pages/download_detail_page.dart';
 import 'package:hibiscus/src/ui/pages/video_detail_page.dart';
 import 'package:hibiscus/src/ui/shell/app_shell.dart';
+import 'package:hibiscus/src/state/nav_state.dart';
 
 /// 路由路径常量
 class AppRoutes {
@@ -14,7 +15,6 @@ class AppRoutes {
   static const String videoDetail = '/video/:id';
   static const String downloads = '/downloads';
   static const String history = '/history';
-  static const String favorites = '/favorites';
   static const String subscriptions = '/subscriptions';
   static const String settings = '/settings';
 }
@@ -26,26 +26,25 @@ Route<dynamic> onGenerateRoute(RouteSettings settings) {
   int initialIndex = 0;
   switch (name) {
     case AppRoutes.home:
-      initialIndex = 0;
+      initialIndex = 2;
       break;
     case AppRoutes.downloads:
       initialIndex = 3;
       break;
     case AppRoutes.history:
-      initialIndex = 2;
-      break;
-    case AppRoutes.favorites:
-      initialIndex = 1;
+      initialIndex = 0;
       break;
     case AppRoutes.subscriptions:
-      initialIndex = 4;
+      initialIndex = 1;
       break;
     case AppRoutes.settings:
-      initialIndex = 5;
+      initialIndex = 4;
       break;
     default:
-      initialIndex = 0;
+      initialIndex = 2;
   }
+
+  appNavState.setIndex(initialIndex);
 
   return MaterialPageRoute(
     settings: RouteSettings(name: name),

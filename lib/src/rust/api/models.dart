@@ -9,7 +9,7 @@ import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'models.freezed.dart';
 
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ApiResult`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// 应用设置
 @freezed
@@ -154,7 +154,7 @@ sealed class ApiFilterOptions with _$ApiFilterOptions {
 @freezed
 sealed class ApiHomePage with _$ApiHomePage {
   const factory ApiHomePage({
-    String? csrfToken,
+    String? formToken,
     String? avatarUrl,
     String? username,
     ApiBanner? banner,
@@ -278,6 +278,17 @@ sealed class ApiSeriesVideo with _$ApiSeriesVideo {
   }) = _ApiSeriesVideo;
 }
 
+/// 我的订阅页数据
+@freezed
+sealed class ApiSubscriptionsPage with _$ApiSubscriptionsPage {
+  const factory ApiSubscriptionsPage({
+    required List<ApiAuthorInfo> authors,
+    required List<ApiVideoCard> videos,
+    required int page,
+    required bool hasNext,
+  }) = _ApiSubscriptionsPage;
+}
+
 /// 标签分组
 @freezed
 sealed class ApiTagGroup with _$ApiTagGroup {
@@ -330,7 +341,7 @@ sealed class ApiVideoDetail with _$ApiVideoDetail {
     required List<ApiVideoQuality> qualities,
     ApiSeriesInfo? series,
     required List<ApiVideoCard> relatedVideos,
-    String? csrfToken,
+    String? formToken,
     String? currentUserId,
     required bool isFav,
     int? favTimes,

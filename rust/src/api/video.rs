@@ -35,7 +35,7 @@ pub async fn get_video_detail(video_id: String) -> anyhow::Result<ApiVideoDetail
                     id: c.id,
                     name: c.name,
                     avatar_url: c.avatar_url,
-                    is_subscribed: false,
+                    is_subscribed: c.is_subscribed,
                 }),
                 tags: detail.tags,
                 qualities: detail.video_sources.into_iter().map(|s| ApiVideoQuality {
@@ -52,7 +52,7 @@ pub async fn get_video_detail(video_id: String) -> anyhow::Result<ApiVideoDetail
                     upload_date: v.upload_date,
                     tags: v.tags,
                 }).collect(),
-                csrf_token: detail.csrf_token,
+                form_token: detail.form_token,
                 current_user_id: detail.current_user_id,
                 is_fav: detail.is_fav,
                 fav_times: detail.fav_times,

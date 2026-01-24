@@ -103,6 +103,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ApiSeriesVideo dco_decode_api_series_video(dynamic raw);
 
   @protected
+  ApiSubscriptionsPage dco_decode_api_subscriptions_page(dynamic raw);
+
+  @protected
   ApiTagGroup dco_decode_api_tag_group(dynamic raw);
 
   @protected
@@ -338,6 +341,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ApiSeriesVideo sse_decode_api_series_video(SseDeserializer deserializer);
+
+  @protected
+  ApiSubscriptionsPage sse_decode_api_subscriptions_page(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ApiTagGroup sse_decode_api_tag_group(SseDeserializer deserializer);
@@ -674,6 +682,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_api_series_video(
     ApiSeriesVideo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_api_subscriptions_page(
+    ApiSubscriptionsPage self,
     SseSerializer serializer,
   );
 

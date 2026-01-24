@@ -1,208 +1,214 @@
 // 订阅页
 
 import 'package:flutter/material.dart';
+import 'package:signals/signals_flutter.dart';
+import 'package:hibiscus/src/state/subscriptions_state.dart';
+import 'package:hibiscus/src/state/user_state.dart';
+import 'package:hibiscus/src/ui/pages/login_page.dart';
+import 'package:hibiscus/src/ui/widgets/video_grid.dart';
+import 'package:hibiscus/src/rust/api/models.dart';
 
-class SubscriptionsPage extends StatelessWidget {
+class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({super.key});
-  
+
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    // Mock 订阅数据
-    final subscriptions = <_SubscriptionItem>[
-      _SubscriptionItem(
-        id: 'author_1',
-        name: '作者名称 1',
-        avatarUrl: '',
-        videoCount: 120,
-        isNotificationOn: true,
-      ),
-      _SubscriptionItem(
-        id: 'author_2',
-        name: '作者名称 2',
-        avatarUrl: '',
-        videoCount: 85,
-        isNotificationOn: false,
-      ),
-      _SubscriptionItem(
-        id: 'author_3',
-        name: '作者名称 3',
-        avatarUrl: '',
-        videoCount: 230,
-        isNotificationOn: true,
-      ),
-    ];
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的订阅'),
-      ),
-      body: subscriptions.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.subscriptions_outlined,
-                    size: 64,
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '暂无订阅',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '浏览视频时点击订阅按钮添加',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: subscriptions.length,
-              itemBuilder: (context, index) {
-                final item = subscriptions[index];
-                return _SubscriptionListTile(item: item);
-              },
-            ),
-    );
-  }
+  State<SubscriptionsPage> createState() => _SubscriptionsPageState();
 }
 
-class _SubscriptionItem {
-  final String id;
-  final String name;
-  final String avatarUrl;
-  final int videoCount;
-  final bool isNotificationOn;
-  
-  _SubscriptionItem({
-    required this.id,
-    required this.name,
-    required this.avatarUrl,
-    required this.videoCount,
-    required this.isNotificationOn,
-  });
-}
+class _SubscriptionsPageState extends State<SubscriptionsPage> {
+  final _scrollController = ScrollController();
 
-class _SubscriptionListTile extends StatefulWidget {
-  final _SubscriptionItem item;
-  
-  const _SubscriptionListTile({required this.item});
-  
-  @override
-  State<_SubscriptionListTile> createState() => _SubscriptionListTileState();
-}
-
-class _SubscriptionListTileState extends State<_SubscriptionListTile> {
-  late bool _isNotificationOn;
-  
   @override
   void initState() {
     super.initState();
-    _isNotificationOn = widget.item.isNotificationOn;
+    if (userState.loginStatus.value == LoginStatus.unknown) {
+      userState.checkLoginStatus().then((_) {
+        if (mounted && userState.isLoggedIn) {
+          subscriptionsState.load(refresh: true);
+        }
+      });
+    } else if (userState.isLoggedIn) {
+      subscriptionsState.load(refresh: true);
+    }
+    _scrollController.addListener(_onScroll);
   }
-  
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    subscriptionsState.reset();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      subscriptionsState.loadMore();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: theme.colorScheme.primaryContainer,
-        child: Text(
-          widget.item.name[0],
-          style: TextStyle(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      title: Text(widget.item.name),
-      subtitle: Text('${widget.item.videoCount} 个视频'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              _isNotificationOn
-                  ? Icons.notifications_active
-                  : Icons.notifications_off_outlined,
-              color: _isNotificationOn
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            onPressed: () {
-              setState(() {
-                _isNotificationOn = !_isNotificationOn;
-              });
-              // TODO: 更新通知状态
-            },
-            tooltip: _isNotificationOn ? '关闭通知' : '开启通知',
-          ),
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'unsubscribe',
-                child: ListTile(
-                  leading: Icon(Icons.person_remove),
-                  title: Text('取消订阅'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'view_videos',
-                child: ListTile(
-                  leading: Icon(Icons.video_library),
-                  title: Text('查看视频'),
-                  contentPadding: EdgeInsets.zero,
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('我的订阅')),
+      body: Watch((context) {
+        final loginStatus = userState.loginStatus.value;
+        if (loginStatus != LoginStatus.loggedIn) {
+          return _buildNeedLogin(context, theme, loginStatus);
+        }
+
+        final authors = subscriptionsState.authors.value;
+        final videos = subscriptionsState.videos.value;
+        final isLoading = subscriptionsState.isLoading.value;
+        final error = subscriptionsState.error.value;
+        final hasMore = subscriptionsState.hasMore.value;
+
+        if (isLoading && videos.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (error != null && videos.isEmpty) {
+          return _buildErrorState(context, error);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => subscriptionsState.load(refresh: true),
+          child: Column(
+            children: [
+              if (authors.isNotEmpty) _buildAuthorsStrip(context, authors),
+              Expanded(
+                child: VideoGrid(
+                  controller: _scrollController,
+                  videos: videos,
+                  isLoading: isLoading,
+                  hasMore: hasMore,
                 ),
               ),
             ],
-            onSelected: (value) {
-              if (value == 'unsubscribe') {
-                _showUnsubscribeDialog(context);
-              } else if (value == 'view_videos') {
-                // TODO: 跳转到作者视频列表
-              }
-            },
           ),
-        ],
-      ),
-      onTap: () {
-        // TODO: 跳转到作者页面
-      },
+        );
+      }),
     );
   }
-  
-  void _showUnsubscribeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('取消订阅'),
-        content: Text('确定要取消订阅 ${widget.item.name} 吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: 取消订阅
-            },
-            child: const Text('确定'),
-          ),
-        ],
+
+  Widget _buildAuthorsStrip(BuildContext context, List<ApiAuthorInfo> authors) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        scrollDirection: Axis.horizontal,
+        itemCount: authors.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final a = authors[index];
+          final name = a.name;
+          final avatarUrl = a.avatarUrl;
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl == null ? const Icon(Icons.person) : null,
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelMedium,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildNeedLogin(BuildContext context, ThemeData theme, LoginStatus status) {
+    final subtitle = switch (status) {
+      LoginStatus.unknown => '正在检查登录状态…',
+      LoginStatus.loggedOut => '登录后才能查看订阅更新',
+      LoginStatus.loggedIn => '',
+    };
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_outline,
+                size: 64,
+                color: theme.colorScheme.onSurfaceVariant.withAlpha(128)),
+            const SizedBox(height: 16),
+            Text('需要登录', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: status == LoginStatus.unknown
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      );
+                      await userState.checkLoginStatus();
+                      if (mounted && userState.isLoggedIn) {
+                        await subscriptionsState.load(refresh: true);
+                      }
+                    },
+              icon: const Icon(Icons.login),
+              label: const Text('去登录'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String error) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+            const SizedBox(height: 16),
+            Text('加载失败', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => subscriptionsState.load(refresh: true),
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试'),
+            ),
+          ],
+        ),
       ),
     );
   }

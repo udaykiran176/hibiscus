@@ -31,22 +31,26 @@ Future<ApiFavoriteList> getMyList({
 /// 添加到收藏
 Future<bool> addToFavorites({
   required String videoCode,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
   required String userId,
 }) => RustLib.instance.api.crateApiUserAddToFavorites(
   videoCode: videoCode,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
   userId: userId,
 );
 
 /// 从收藏移除
 Future<bool> removeFromFavorites({
   required String videoCode,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
   required String userId,
 }) => RustLib.instance.api.crateApiUserRemoveFromFavorites(
   videoCode: videoCode,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
   userId: userId,
 );
 
@@ -54,37 +58,47 @@ Future<bool> removeFromFavorites({
 Future<bool> deleteFromList({
   required String listType,
   required String videoCode,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
 }) => RustLib.instance.api.crateApiUserDeleteFromList(
   listType: listType,
   videoCode: videoCode,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
 );
 
 /// 获取订阅作者列表
 Future<List<ApiAuthorInfo>> getSubscribedAuthors({required int page}) =>
     RustLib.instance.api.crateApiUserGetSubscribedAuthors(page: page);
 
+/// 获取我的订阅页（作者 + 订阅更新视频）
+Future<ApiSubscriptionsPage> getMySubscriptions({required int page}) =>
+    RustLib.instance.api.crateApiUserGetMySubscriptions(page: page);
+
 /// 订阅作者
 Future<bool> subscribeAuthor({
   required String artistId,
   required String userId,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
 }) => RustLib.instance.api.crateApiUserSubscribeAuthor(
   artistId: artistId,
   userId: userId,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
 );
 
 /// 取消订阅作者
 Future<bool> unsubscribeAuthor({
   required String artistId,
   required String userId,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
 }) => RustLib.instance.api.crateApiUserUnsubscribeAuthor(
   artistId: artistId,
   userId: userId,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
 );
 
 /// 获取播放历史
@@ -135,17 +149,19 @@ Future<bool> setCfClearance({required String cookieValue}) =>
 Future<ApiCloudflareChallenge?> getCloudflareChallengeInfo() =>
     RustLib.instance.api.crateApiUserGetCloudflareChallengeInfo();
 
-/// 获取登录页面的 CSRF Token
-Future<String> getLoginCsrfToken() =>
-    RustLib.instance.api.crateApiUserGetLoginCsrfToken();
+/// 获取登录页面的表单 `_token`
+Future<String> getLoginFormToken() =>
+    RustLib.instance.api.crateApiUserGetLoginFormToken();
 
 /// 登录
 Future<bool> login({
   required String email,
   required String password,
-  required String csrfToken,
+  required String formToken,
+  required String xCsrfToken,
 }) => RustLib.instance.api.crateApiUserLogin(
   email: email,
   password: password,
-  csrfToken: csrfToken,
+  formToken: formToken,
+  xCsrfToken: xCsrfToken,
 );

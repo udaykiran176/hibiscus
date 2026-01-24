@@ -9,6 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'settings.freezed.dart';
 
+// These functions are ignored because they are not marked as `pub`: `dir_size`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 /// 获取应用设置
@@ -30,6 +31,14 @@ Future<bool> setDownloadConcurrent({required int count}) =>
 /// 设置代理
 Future<bool> setProxy({String? proxyUrl}) =>
     RustLib.instance.api.crateApiSettingsSetProxy(proxyUrl: proxyUrl);
+
+/// Flutter 侧 settingsState 的持久化（JSON string）
+Future<String?> getFlutterSettings() =>
+    RustLib.instance.api.crateApiSettingsGetFlutterSettings();
+
+/// Flutter 侧 settingsState 的持久化（JSON string）
+Future<bool> saveFlutterSettings({required String json}) =>
+    RustLib.instance.api.crateApiSettingsSaveFlutterSettings(json: json);
 
 /// 获取缓存大小
 Future<CacheInfo> getCacheSize() =>

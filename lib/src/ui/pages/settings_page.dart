@@ -5,7 +5,7 @@ import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
-import 'package:hibiscus/src/rust/api/user.dart' as user_api;
+import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -37,7 +37,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       body: Watch((context) {
         final settings = settingsState.settings.value;
-        final isDark = settings.themeMode == ThemeMode.dark;
         final loginStatus = userState.loginStatus.value;
         final user = userState.userInfo.value;
 
@@ -48,13 +47,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
             // 外观设置
             _SectionHeader(title: '外观'),
-            SwitchListTile(
-              title: const Text('深色模式'),
-              subtitle: const Text('跟随系统或手动切换'),
-              value: isDark,
-              onChanged: (value) {
-                settingsState.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-              },
+            ListTile(
+              title: const Text('主题模式'),
+              subtitle: Text(_themeModeLabel(settings.themeMode)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeModePicker(context, settings.themeMode),
             ),
             
             const Divider(),
@@ -107,19 +104,9 @@ class _SettingsPageState extends State<SettingsPage> {
             _SectionHeader(title: '存储'),
             ListTile(
               title: const Text('清除缓存'),
-              subtitle: const Text('图片缓存、临时文件等'),
-              trailing: Text(
-                '128 MB',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+              subtitle: const Text('目前仅包含离线封面缓存'),
+              trailing: const Icon(Icons.chevron_right),
               onTap: () => _showClearCacheDialog(context),
-            ),
-            ListTile(
-              title: const Text('清除播放历史'),
-              subtitle: const Text('删除所有播放记录'),
-              onTap: () => _showClearHistoryDialog(context),
             ),
           
             const Divider(),
@@ -200,21 +187,24 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   
   void _showClearCacheDialog(BuildContext context) {
+    final rootContext = context;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('清除缓存'),
-        content: const Text('确定要清除所有缓存数据吗？'),
+        content: const Text('确定要清除离线封面缓存吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: 清除缓存
-              ScaffoldMessenger.of(context).showSnackBar(
+              await settings_api.clearCoverCache();
+              if (!mounted) return;
+              if (!rootContext.mounted) return;
+              ScaffoldMessenger.of(rootContext).showSnackBar(
                 const SnackBar(content: Text('缓存已清除')),
               );
             },
@@ -224,31 +214,35 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-  
-  void _showClearHistoryDialog(BuildContext context) {
-    final rootContext = context;
+
+  String _themeModeLabel(ThemeMode mode) {
+    return switch (mode) {
+      ThemeMode.system => '跟随系统',
+      ThemeMode.light => '浅色',
+      ThemeMode.dark => '深色',
+    };
+  }
+
+  void _showThemeModePicker(BuildContext context, ThemeMode current) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清除播放历史'),
-        content: const Text('确定要清除所有播放历史吗？此操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await user_api.clearPlayHistory();
-              if (!rootContext.mounted) return;
-              ScaffoldMessenger.of(rootContext).showSnackBar(
-                const SnackBar(content: Text('播放历史已清除')),
-              );
-            },
-            child: const Text('清除'),
-          ),
-        ],
+        title: const Text('主题模式'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ThemeMode.values.map((mode) {
+            return RadioListTile<ThemeMode>(
+              title: Text(_themeModeLabel(mode)),
+              value: mode,
+              groupValue: current,
+              onChanged: (value) {
+                if (value == null) return;
+                settingsState.setThemeMode(value);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }

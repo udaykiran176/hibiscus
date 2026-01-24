@@ -8,6 +8,7 @@ use reqwest::Client;
 use reqwest::dns::{Resolve, Resolving, Name};
 use std::sync::Arc;
 use anyhow::Result;
+use crate::core::storage;
 
 /// 全局 HTTP 客户端
 static CLIENT: OnceLock<Client> = OnceLock::new();
@@ -124,6 +125,7 @@ pub async fn get(url: &str) -> Result<String> {
     
     match client.get(url).send().await {
         Ok(response) => {
+            persist_response_cookies(&response);
             let status = response.status();
             tracing::info!("Response status: {}", status);
             
@@ -153,6 +155,7 @@ pub async fn post(url: &str, body: &str) -> Result<String> {
         .body(body.to_string())
         .send()
         .await?;
+    persist_response_cookies(&response);
     
     if response.status() == 403 || response.status() == 503 {
         return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
@@ -162,23 +165,43 @@ pub async fn post(url: &str, body: &str) -> Result<String> {
     Ok(text)
 }
 
-/// 发送带 CSRF Token 的 POST 请求
-pub async fn post_with_csrf(url: &str, body: &str, csrf_token: &str) -> Result<String> {
+/// 发送带 `X-CSRF-TOKEN` header 的 POST 请求
+pub async fn post_with_x_csrf_token(url: &str, body: &str, x_csrf_token: &str) -> Result<String> {
     let client = get_client();
+    tracing::info!(
+        "POST (X-CSRF-TOKEN) url={} x_csrf_token_len={} body_len={}",
+        url,
+        x_csrf_token.len(),
+        body.len()
+    );
     let response = client
         .post(url)
         .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("X-CSRF-TOKEN", csrf_token)
+        .header("X-CSRF-TOKEN", x_csrf_token)
         .body(body.to_string())
         .send()
         .await?;
+    persist_response_cookies(&response);
     
     if response.status() == 403 || response.status() == 503 {
         return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
     }
     
+    let status = response.status();
     let text = response.text().await?;
+    let snippet: String = text.chars().take(240).collect();
+    tracing::info!(
+        "POST (X-CSRF-TOKEN) resp status={} len={} snippet={:?}",
+        status.as_u16(),
+        text.len(),
+        snippet
+    );
     Ok(text)
+}
+
+/// 兼容旧名字：这里的参数是 `X-CSRF-TOKEN` header 值，不是表单 `_token`
+pub async fn post_with_csrf(url: &str, body: &str, csrf_token: &str) -> Result<String> {
+    post_with_x_csrf_token(url, body, csrf_token).await
 }
 
 /// 下载文件到指定路径
@@ -209,6 +232,75 @@ pub async fn download_file(
     
     file.flush().await?;
     Ok(())
+}
+
+fn persist_response_cookies(response: &reqwest::Response) {
+    use reqwest::header::SET_COOKIE;
+
+    let url = match reqwest::Url::parse(BASE_URL) {
+        Ok(u) => u,
+        Err(_) => return,
+    };
+
+    for value in response.headers().get_all(SET_COOKIE).iter() {
+        let Ok(raw) = value.to_str() else { continue; };
+        // keep jar updated (Domain/Path/Expires handling is done by the cookie parser inside)
+        get_cookie_jar().add_cookie_str(raw, &url);
+        // best-effort persist for next launch
+        persist_set_cookie_to_db(raw);
+    }
+}
+
+fn persist_set_cookie_to_db(set_cookie: &str) {
+    let mut last_expires: Option<i64> = None;
+    let mut last_domain: Option<String> = None;
+    let mut last_path: Option<String> = None;
+
+    // very small parser: "name=value; Expires=...; Max-Age=...; Path=/; Domain=.hanime1.me; ..."
+    for part in set_cookie.split(';') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let lower = trimmed.to_ascii_lowercase();
+        if lower.starts_with("expires=") {
+            let value = trimmed[8..].trim();
+            if let Ok(time) = chrono::DateTime::parse_from_rfc2822(value) {
+                last_expires = Some(time.timestamp());
+            }
+            continue;
+        }
+        if lower.starts_with("max-age=") {
+            if let Ok(age) = trimmed[8..].trim().parse::<i64>() {
+                last_expires = Some(chrono::Utc::now().timestamp() + age);
+            }
+            continue;
+        }
+        if lower.starts_with("domain=") {
+            last_domain = Some(trimmed[7..].trim().trim_start_matches('.').to_string());
+            continue;
+        }
+        if lower.starts_with("path=") {
+            last_path = Some(trimmed[5..].trim().to_string());
+            continue;
+        }
+        if lower == "httponly" || lower == "secure" || lower.starts_with("samesite=") {
+            continue;
+        }
+
+        if let Some(idx) = trimmed.find('=') {
+            let name = trimmed[..idx].trim();
+            let value = trimmed[idx + 1..].trim();
+            let domain = last_domain.as_deref().unwrap_or("hanime1.me");
+            let path = last_path.as_deref().unwrap_or("/");
+            let _ = storage::save_cookie(domain, name, value, path, last_expires);
+            // reset per-cookie attributes
+            last_expires = None;
+            last_domain = None;
+            last_path = None;
+        }
+    }
 }
 
 /// 检查是否可以直接访问（无需 Cloudflare 验证）

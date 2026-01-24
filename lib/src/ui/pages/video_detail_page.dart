@@ -17,13 +17,13 @@ import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/state/download_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// 视频详情状态
 class _VideoDetailState {
   final videoDetail = signal<ApiVideoDetail?>(null);
   final isLoading = signal(false);
   final error = signal<String?>(null);
-  final isFavorite = signal(false);
   final selectedQuality = signal<String?>(null);
   final downloadQuality = signal<String?>(null);
   final videoUrl = signal<String?>(null);
@@ -35,7 +35,6 @@ class _VideoDetailState {
     try {
       final detail = await video_api.getVideoDetail(videoId: videoId);
       videoDetail.value = detail;
-      isFavorite.value = detail.isFav;
       
     } catch (e) {
       error.value = e.toString();
@@ -64,7 +63,6 @@ class _VideoDetailState {
     videoDetail.value = null;
     isLoading.value = false;
     error.value = null;
-    isFavorite.value = false;
     selectedQuality.value = null;
     downloadQuality.value = null;
     videoUrl.value = null;
@@ -232,18 +230,6 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
             tooltip: '分享',
             onPressed: _shareCurrent,
           ),
-          Watch((context) {
-            final isFav = _state.isFavorite.value;
-            return IconButton(
-              icon: Icon(isFav ? Icons.favorite : Icons.favorite_outline),
-              tooltip: isFav ? '取消收藏' : '收藏',
-              onPressed: () async {
-                final detail = _state.videoDetail.value;
-                if (detail == null) return;
-                await _toggleFavorite(detail);
-              },
-            );
-          }),
           IconButton(
             icon: const Icon(Icons.download_outlined),
             onPressed: () => _showDownloadDialog(context),
@@ -463,8 +449,10 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           ),
         ),
         FilledButton.tonal(
-          onPressed: () {
-            // TODO: 订阅/取消订阅
+          onPressed: () async {
+            final detail = _state.videoDetail.value;
+            if (detail == null) return;
+            await _toggleSubscribe(detail);
           },
           child: Text(author.isSubscribed ? '已订阅' : '订阅'),
         ),
@@ -698,12 +686,47 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
 
   Future<void> _shareCurrent() async {
     final url = 'https://hanime1.me/watch?v=${widget.videoId}';
-    await Clipboard.setData(ClipboardData(text: url));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('链接已复制')));
+    final rootContext = context;
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('复制链接'),
+              onTap: () async {
+                await Clipboard.setData(ClipboardData(text: url));
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                if (!rootContext.mounted) return;
+                ScaffoldMessenger.of(rootContext).showSnackBar(
+                  const SnackBar(content: Text('链接已复制')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.open_in_browser),
+              title: const Text('在浏览器打开'),
+              onTap: () async {
+                final uri = Uri.parse(url);
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<void> _toggleFavorite(ApiVideoDetail detail) async {
+  Future<void> _toggleSubscribe(ApiVideoDetail detail) async {
+    final author = detail.author;
+    if (author == null || author.id.isEmpty) return;
+
     if (userState.loginStatus.value == LoginStatus.unknown) {
       await userState.checkLoginStatus();
     }
@@ -714,7 +737,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('需要登录'),
-          content: const Text('收藏功能需要登录账号。'),
+          content: const Text('订阅功能需要登录账号。'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
             FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('去登录')),
@@ -724,25 +747,51 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       if (goLogin == true && mounted) {
         await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginPage()));
         await userState.checkLoginStatus();
+        await _state.loadVideoDetail(widget.videoId);
       }
       return;
     }
 
-    final csrf = detail.csrfToken;
-    final userId = detail.currentUserId;
-    if (csrf == null || csrf.isEmpty || userId == null || userId.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('登录信息缺失，请刷新页面后重试')));
-      return;
+    ApiVideoDetail latest = detail;
+    var formToken = latest.formToken;
+    var userId = latest.currentUserId;
+    if (formToken == null || formToken.isEmpty || userId == null || userId.isEmpty) {
+      await _state.loadVideoDetail(widget.videoId);
+      latest = _state.videoDetail.value ?? latest;
+      formToken = latest.formToken;
+      userId = latest.currentUserId;
+      if (formToken == null || formToken.isEmpty || userId == null || userId.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('登录信息缺失，请刷新页面后重试')));
+        return;
+      }
     }
 
+    final formTokenValue = formToken;
+    final userIdValue = userId;
+
     try {
-      if (_state.isFavorite.value) {
-        await user_api.removeFromFavorites(videoCode: detail.id, csrfToken: csrf, userId: userId);
-        _state.isFavorite.value = false;
+      final curAuthor = latest.author;
+      if (curAuthor == null) return;
+
+      if (curAuthor.isSubscribed) {
+        await user_api.unsubscribeAuthor(
+          artistId: curAuthor.id,
+          userId: userIdValue,
+          formToken: formTokenValue,
+          xCsrfToken: formTokenValue,
+        );
+        _state.videoDetail.value =
+            latest.copyWith(author: curAuthor.copyWith(isSubscribed: false));
       } else {
-        await user_api.addToFavorites(videoCode: detail.id, csrfToken: csrf, userId: userId);
-        _state.isFavorite.value = true;
+        await user_api.subscribeAuthor(
+          artistId: curAuthor.id,
+          userId: userIdValue,
+          formToken: formTokenValue,
+          xCsrfToken: formTokenValue,
+        );
+        _state.videoDetail.value =
+            latest.copyWith(author: curAuthor.copyWith(isSubscribed: true));
       }
     } catch (e) {
       if (!mounted) return;

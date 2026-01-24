@@ -15,8 +15,11 @@ pub async fn init_app(data_path: String) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // 不需要初始化日志
-    // let _ = tracing_subscriber::fmt::try_init();
+    // 初始化日志（默认 info）
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .try_init();
     
     // 初始化数据库
     let db_path = format!("{}/data.db", data_path);

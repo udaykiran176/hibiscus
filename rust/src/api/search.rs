@@ -244,7 +244,7 @@ pub async fn get_homepage() -> anyhow::Result<ApiHomePage> {
                 .collect();
             
             Ok(ApiHomePage {
-                csrf_token: result.csrf_token,
+                form_token: result.form_token,
                 avatar_url: result.avatar_url,
                 username: result.username,
                 banner: result.banner.map(|b| ApiBanner {
@@ -266,7 +266,7 @@ pub async fn get_homepage() -> anyhow::Result<ApiHomePage> {
             
             // 返回模拟数据
             Ok(ApiHomePage {
-                csrf_token: None,
+                form_token: None,
                 avatar_url: None,
                 username: None,
                 banner: None,

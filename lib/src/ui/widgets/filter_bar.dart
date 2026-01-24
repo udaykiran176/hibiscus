@@ -1,6 +1,7 @@
 // 过滤条件栏
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/state/search_state.dart';
 
@@ -200,21 +201,29 @@ class _FilterBarState extends State<FilterBar> {
             ),
           ),
         ),
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          children: [
-            // 影片类型
-            _FilterDropdown(
-              label: '類型',
-              value: _selectedGenre,
-              items: FilterOptions.genres
-                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-                  .toList(),
-              onChanged: (value) {
-                _updateGenre(value);
-              },
-            ),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+            },
+          ),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              // 影片类型
+              _FilterDropdown(
+                label: '類型',
+                value: _selectedGenre,
+                items: FilterOptions.genres
+                    .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                    .toList(),
+                onChanged: (value) {
+                  _updateGenre(value);
+                },
+              ),
 
             const SizedBox(width: 12),
           
@@ -261,7 +270,8 @@ class _FilterBarState extends State<FilterBar> {
                 _updateDuration(value);
               },
             ),
-          ],
+            ],
+          ),
         ),
       );
     });

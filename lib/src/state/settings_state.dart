@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:signals/signals_flutter.dart';
+import 'dart:convert';
+import 'package:hibiscus/src/rust/api/settings.dart' as rust_settings;
 
 /// 应用设置
 class AppSettings {
@@ -105,19 +107,10 @@ class SettingsState {
     if (_initialized.value) return;
     
     try {
-      // TODO: 从本地存储加载设置
-      // final json = await storage.read('settings');
-      // if (json != null) {
-      //   settings.value = AppSettings.fromJson(jsonDecode(json));
-      // }
-      
-      // 设置默认下载路径
-      // final appDir = await getApplicationDocumentsDirectory();
-      // if (settings.value.downloadPath.isEmpty) {
-      //   settings.value = settings.value.copyWith(
-      //     downloadPath: '${appDir.path}/downloads',
-      //   );
-      // }
+      final jsonStr = await rust_settings.getFlutterSettings();
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        settings.value = AppSettings.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
+      }
       
       _initialized.value = true;
     } catch (e) {
@@ -199,8 +192,8 @@ class SettingsState {
   
   /// 保存设置到本地存储
   Future<void> _save() async {
-    // TODO: 保存到本地存储
-    // await storage.write('settings', jsonEncode(settings.value.toJson()));
+    final jsonStr = jsonEncode(settings.value.toJson());
+    await rust_settings.saveFlutterSettings(json: jsonStr);
   }
 }
 

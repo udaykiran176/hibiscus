@@ -5,6 +5,9 @@ use std::sync::OnceLock;
 use rusqlite::{Connection, params};
 use anyhow::Result;
 use std::sync::Mutex;
+use refinery::embed_migrations;
+
+embed_migrations!("migrations");
 
 /// 数据库连接
 static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
@@ -29,80 +32,9 @@ pub fn init_db(db_path: Option<&str>) -> Result<()> {
         let _ = DATA_DIR.set(parent.to_path_buf());
     }
     
-    let conn = Connection::open(&path)?;
-    
-    // 创建表
-    conn.execute_batch(
-        r#"
-        -- 历史记录表
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id TEXT NOT NULL UNIQUE,
-            title TEXT NOT NULL,
-            cover_url TEXT,
-            duration TEXT,
-            watch_progress INTEGER DEFAULT 0,
-            total_duration INTEGER DEFAULT 0,
-            watched_at INTEGER NOT NULL
-        );
-        
-        -- 创建索引
-        CREATE INDEX IF NOT EXISTS idx_history_watched_at ON history(watched_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_history_video_id ON history(video_id);
-        
-        -- 下载任务表
-        CREATE TABLE IF NOT EXISTS downloads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id TEXT NOT NULL UNIQUE,
-            title TEXT NOT NULL,
-            cover_url TEXT,
-            video_url TEXT NOT NULL,
-            quality TEXT,
-            description TEXT,
-            tags TEXT,
-            cover_path TEXT,
-            save_path TEXT,
-            total_bytes INTEGER DEFAULT 0,
-            downloaded_bytes INTEGER DEFAULT 0,
-            status INTEGER DEFAULT 0,
-            error_message TEXT,
-            created_at INTEGER NOT NULL,
-            completed_at INTEGER
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);
-        
-        -- 稍后观看表
-        CREATE TABLE IF NOT EXISTS watch_later (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id TEXT NOT NULL UNIQUE,
-            title TEXT NOT NULL,
-            cover_url TEXT,
-            duration TEXT,
-            added_at INTEGER NOT NULL
-        );
-        
-        CREATE INDEX IF NOT EXISTS idx_watch_later_added_at ON watch_later(added_at DESC);
-        
-        -- 设置表
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-        
-        -- Cookies 表
-        CREATE TABLE IF NOT EXISTS cookies (
-            domain TEXT NOT NULL,
-            name TEXT NOT NULL,
-            value TEXT NOT NULL,
-            path TEXT DEFAULT '/',
-            expires INTEGER,
-            PRIMARY KEY (domain, name, path)
-        );
-        "#
-    )?;
-    
-    let _ = ensure_download_columns(&conn);
+    let mut conn = Connection::open(&path)?;
+
+    migrations::runner().run(&mut conn)?;
     DB.get_or_init(|| Mutex::new(conn));
     
     Ok(())
@@ -124,26 +56,7 @@ fn get_db() -> Result<std::sync::MutexGuard<'static, Connection>> {
         .map_err(|e| anyhow::anyhow!("Failed to lock database: {}", e))
 }
 
-fn ensure_download_columns(conn: &Connection) -> Result<()> {
-    let mut stmt = conn.prepare("PRAGMA table_info(downloads)")?;
-    let columns = stmt
-        .query_map([], |row| Ok(row.get::<_, String>(1)?))?
-        .collect::<Result<Vec<_>, _>>()?;
-
-    if !columns.iter().any(|c| c == "quality") {
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN quality TEXT", []);
-    }
-    if !columns.iter().any(|c| c == "description") {
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN description TEXT", []);
-    }
-    if !columns.iter().any(|c| c == "tags") {
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN tags TEXT", []);
-    }
-    if !columns.iter().any(|c| c == "cover_path") {
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN cover_path TEXT", []);
-    }
-    Ok(())
-}
+// (schema handled by refinery migrations)
 
 // ========== 历史记录 ==========
 
@@ -388,6 +301,16 @@ pub fn update_download_save_path(video_id: &str, save_path: &str) -> Result<()> 
     Ok(())
 }
 
+/// 更新下载封面本地路径
+pub fn update_download_cover_path(video_id: &str, cover_path: &str) -> Result<()> {
+    let db = get_db()?;
+    db.execute(
+        "UPDATE downloads SET cover_path = ?1 WHERE video_id = ?2",
+        params![cover_path, video_id],
+    )?;
+    Ok(())
+}
+
 /// 更新下载进度
 pub fn update_download_progress(video_id: &str, downloaded: i64, total: i64) -> Result<()> {
     let db = get_db()?;
@@ -471,78 +394,6 @@ pub fn reset_running_downloads() -> Result<()> {
 pub fn delete_download(video_id: &str) -> Result<()> {
     let db = get_db()?;
     db.execute("DELETE FROM downloads WHERE video_id = ?1", params![video_id])?;
-    Ok(())
-}
-
-// ========== 稍后观看 ==========
-
-/// 稍后观看记录（内部使用）
-#[derive(Debug, Clone)]
-pub(crate) struct WatchLaterRecord {
-    pub id: i64,
-    pub video_id: String,
-    pub title: String,
-    pub cover_url: String,
-    pub duration: String,
-    pub added_at: i64,
-}
-
-/// 添加到稍后观看
-pub fn add_watch_later(
-    video_id: &str,
-    title: &str,
-    cover_url: &str,
-    duration: &str,
-) -> Result<()> {
-    let db = get_db()?;
-    let now = chrono::Utc::now().timestamp();
-    
-    db.execute(
-        "INSERT OR IGNORE INTO watch_later (video_id, title, cover_url, duration, added_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![video_id, title, cover_url, duration, now],
-    )?;
-    
-    Ok(())
-}
-
-/// 获取稍后观看列表
-pub fn get_watch_later() -> Result<Vec<WatchLaterRecord>> {
-    let db = get_db()?;
-    let mut stmt = db.prepare(
-        "SELECT id, video_id, title, cover_url, duration, added_at 
-         FROM watch_later ORDER BY added_at DESC"
-    )?;
-    
-    let records = stmt.query_map([], |row| {
-        Ok(WatchLaterRecord {
-            id: row.get(0)?,
-            video_id: row.get(1)?,
-            title: row.get(2)?,
-            cover_url: row.get(3)?,
-            duration: row.get(4)?,
-            added_at: row.get(5)?,
-        })
-    })?;
-    
-    let mut result = Vec::new();
-    for record in records {
-        result.push(record?);
-    }
-    
-    Ok(result)
-}
-
-/// 从稍后观看移除
-pub fn remove_watch_later(video_id: &str) -> Result<()> {
-    let db = get_db()?;
-    db.execute("DELETE FROM watch_later WHERE video_id = ?1", params![video_id])?;
-    Ok(())
-}
-
-/// 清空稍后观看
-pub fn clear_watch_later() -> Result<()> {
-    let db = get_db()?;
-    db.execute("DELETE FROM watch_later", [])?;
     Ok(())
 }
 

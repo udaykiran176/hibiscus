@@ -3100,7 +3100,7 @@ as List<ApiFilterOption>,
 /// @nodoc
 mixin _$ApiHomePage {
 
- String? get csrfToken; String? get avatarUrl; String? get username; ApiBanner? get banner; List<ApiVideoCard> get latestRelease; List<ApiVideoCard> get latestUpload; List<ApiHomeSection> get sections;
+ String? get formToken; String? get avatarUrl; String? get username; ApiBanner? get banner; List<ApiVideoCard> get latestRelease; List<ApiVideoCard> get latestUpload; List<ApiHomeSection> get sections;
 /// Create a copy of ApiHomePage
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3111,16 +3111,16 @@ $ApiHomePageCopyWith<ApiHomePage> get copyWith => _$ApiHomePageCopyWithImpl<ApiH
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiHomePage&&(identical(other.csrfToken, csrfToken) || other.csrfToken == csrfToken)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.username, username) || other.username == username)&&(identical(other.banner, banner) || other.banner == banner)&&const DeepCollectionEquality().equals(other.latestRelease, latestRelease)&&const DeepCollectionEquality().equals(other.latestUpload, latestUpload)&&const DeepCollectionEquality().equals(other.sections, sections));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiHomePage&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.username, username) || other.username == username)&&(identical(other.banner, banner) || other.banner == banner)&&const DeepCollectionEquality().equals(other.latestRelease, latestRelease)&&const DeepCollectionEquality().equals(other.latestUpload, latestUpload)&&const DeepCollectionEquality().equals(other.sections, sections));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,csrfToken,avatarUrl,username,banner,const DeepCollectionEquality().hash(latestRelease),const DeepCollectionEquality().hash(latestUpload),const DeepCollectionEquality().hash(sections));
+int get hashCode => Object.hash(runtimeType,formToken,avatarUrl,username,banner,const DeepCollectionEquality().hash(latestRelease),const DeepCollectionEquality().hash(latestUpload),const DeepCollectionEquality().hash(sections));
 
 @override
 String toString() {
-  return 'ApiHomePage(csrfToken: $csrfToken, avatarUrl: $avatarUrl, username: $username, banner: $banner, latestRelease: $latestRelease, latestUpload: $latestUpload, sections: $sections)';
+  return 'ApiHomePage(formToken: $formToken, avatarUrl: $avatarUrl, username: $username, banner: $banner, latestRelease: $latestRelease, latestUpload: $latestUpload, sections: $sections)';
 }
 
 
@@ -3131,7 +3131,7 @@ abstract mixin class $ApiHomePageCopyWith<$Res>  {
   factory $ApiHomePageCopyWith(ApiHomePage value, $Res Function(ApiHomePage) _then) = _$ApiHomePageCopyWithImpl;
 @useResult
 $Res call({
- String? csrfToken, String? avatarUrl, String? username, ApiBanner? banner, List<ApiVideoCard> latestRelease, List<ApiVideoCard> latestUpload, List<ApiHomeSection> sections
+ String? formToken, String? avatarUrl, String? username, ApiBanner? banner, List<ApiVideoCard> latestRelease, List<ApiVideoCard> latestUpload, List<ApiHomeSection> sections
 });
 
 
@@ -3148,9 +3148,9 @@ class _$ApiHomePageCopyWithImpl<$Res>
 
 /// Create a copy of ApiHomePage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? csrfToken = freezed,Object? avatarUrl = freezed,Object? username = freezed,Object? banner = freezed,Object? latestRelease = null,Object? latestUpload = null,Object? sections = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? formToken = freezed,Object? avatarUrl = freezed,Object? username = freezed,Object? banner = freezed,Object? latestRelease = null,Object? latestUpload = null,Object? sections = null,}) {
   return _then(_self.copyWith(
-csrfToken: freezed == csrfToken ? _self.csrfToken : csrfToken // ignore: cast_nullable_to_non_nullable
+formToken: freezed == formToken ? _self.formToken : formToken // ignore: cast_nullable_to_non_nullable
 as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,username: freezed == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String?,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
@@ -3251,10 +3251,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? csrfToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? formToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ApiHomePage() when $default != null:
-return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);case _:
+return $default(_that.formToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);case _:
   return orElse();
 
 }
@@ -3272,10 +3272,10 @@ return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? csrfToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? formToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)  $default,) {final _that = this;
 switch (_that) {
 case _ApiHomePage():
-return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);}
+return $default(_that.formToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -3289,10 +3289,10 @@ return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? csrfToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? formToken,  String? avatarUrl,  String? username,  ApiBanner? banner,  List<ApiVideoCard> latestRelease,  List<ApiVideoCard> latestUpload,  List<ApiHomeSection> sections)?  $default,) {final _that = this;
 switch (_that) {
 case _ApiHomePage() when $default != null:
-return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);case _:
+return $default(_that.formToken,_that.avatarUrl,_that.username,_that.banner,_that.latestRelease,_that.latestUpload,_that.sections);case _:
   return null;
 
 }
@@ -3304,10 +3304,10 @@ return $default(_that.csrfToken,_that.avatarUrl,_that.username,_that.banner,_tha
 
 
 class _ApiHomePage implements ApiHomePage {
-  const _ApiHomePage({this.csrfToken, this.avatarUrl, this.username, this.banner, required final  List<ApiVideoCard> latestRelease, required final  List<ApiVideoCard> latestUpload, required final  List<ApiHomeSection> sections}): _latestRelease = latestRelease,_latestUpload = latestUpload,_sections = sections;
+  const _ApiHomePage({this.formToken, this.avatarUrl, this.username, this.banner, required final  List<ApiVideoCard> latestRelease, required final  List<ApiVideoCard> latestUpload, required final  List<ApiHomeSection> sections}): _latestRelease = latestRelease,_latestUpload = latestUpload,_sections = sections;
   
 
-@override final  String? csrfToken;
+@override final  String? formToken;
 @override final  String? avatarUrl;
 @override final  String? username;
 @override final  ApiBanner? banner;
@@ -3343,16 +3343,16 @@ _$ApiHomePageCopyWith<_ApiHomePage> get copyWith => __$ApiHomePageCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiHomePage&&(identical(other.csrfToken, csrfToken) || other.csrfToken == csrfToken)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.username, username) || other.username == username)&&(identical(other.banner, banner) || other.banner == banner)&&const DeepCollectionEquality().equals(other._latestRelease, _latestRelease)&&const DeepCollectionEquality().equals(other._latestUpload, _latestUpload)&&const DeepCollectionEquality().equals(other._sections, _sections));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiHomePage&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.username, username) || other.username == username)&&(identical(other.banner, banner) || other.banner == banner)&&const DeepCollectionEquality().equals(other._latestRelease, _latestRelease)&&const DeepCollectionEquality().equals(other._latestUpload, _latestUpload)&&const DeepCollectionEquality().equals(other._sections, _sections));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,csrfToken,avatarUrl,username,banner,const DeepCollectionEquality().hash(_latestRelease),const DeepCollectionEquality().hash(_latestUpload),const DeepCollectionEquality().hash(_sections));
+int get hashCode => Object.hash(runtimeType,formToken,avatarUrl,username,banner,const DeepCollectionEquality().hash(_latestRelease),const DeepCollectionEquality().hash(_latestUpload),const DeepCollectionEquality().hash(_sections));
 
 @override
 String toString() {
-  return 'ApiHomePage(csrfToken: $csrfToken, avatarUrl: $avatarUrl, username: $username, banner: $banner, latestRelease: $latestRelease, latestUpload: $latestUpload, sections: $sections)';
+  return 'ApiHomePage(formToken: $formToken, avatarUrl: $avatarUrl, username: $username, banner: $banner, latestRelease: $latestRelease, latestUpload: $latestUpload, sections: $sections)';
 }
 
 
@@ -3363,7 +3363,7 @@ abstract mixin class _$ApiHomePageCopyWith<$Res> implements $ApiHomePageCopyWith
   factory _$ApiHomePageCopyWith(_ApiHomePage value, $Res Function(_ApiHomePage) _then) = __$ApiHomePageCopyWithImpl;
 @override @useResult
 $Res call({
- String? csrfToken, String? avatarUrl, String? username, ApiBanner? banner, List<ApiVideoCard> latestRelease, List<ApiVideoCard> latestUpload, List<ApiHomeSection> sections
+ String? formToken, String? avatarUrl, String? username, ApiBanner? banner, List<ApiVideoCard> latestRelease, List<ApiVideoCard> latestUpload, List<ApiHomeSection> sections
 });
 
 
@@ -3380,9 +3380,9 @@ class __$ApiHomePageCopyWithImpl<$Res>
 
 /// Create a copy of ApiHomePage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? csrfToken = freezed,Object? avatarUrl = freezed,Object? username = freezed,Object? banner = freezed,Object? latestRelease = null,Object? latestUpload = null,Object? sections = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? formToken = freezed,Object? avatarUrl = freezed,Object? username = freezed,Object? banner = freezed,Object? latestRelease = null,Object? latestUpload = null,Object? sections = null,}) {
   return _then(_ApiHomePage(
-csrfToken: freezed == csrfToken ? _self.csrfToken : csrfToken // ignore: cast_nullable_to_non_nullable
+formToken: freezed == formToken ? _self.formToken : formToken // ignore: cast_nullable_to_non_nullable
 as String?,avatarUrl: freezed == avatarUrl ? _self.avatarUrl : avatarUrl // ignore: cast_nullable_to_non_nullable
 as String?,username: freezed == username ? _self.username : username // ignore: cast_nullable_to_non_nullable
 as String?,banner: freezed == banner ? _self.banner : banner // ignore: cast_nullable_to_non_nullable
@@ -6054,6 +6054,278 @@ as String,
 }
 
 /// @nodoc
+mixin _$ApiSubscriptionsPage {
+
+ List<ApiAuthorInfo> get authors; List<ApiVideoCard> get videos; int get page; bool get hasNext;
+/// Create a copy of ApiSubscriptionsPage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ApiSubscriptionsPageCopyWith<ApiSubscriptionsPage> get copyWith => _$ApiSubscriptionsPageCopyWithImpl<ApiSubscriptionsPage>(this as ApiSubscriptionsPage, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiSubscriptionsPage&&const DeepCollectionEquality().equals(other.authors, authors)&&const DeepCollectionEquality().equals(other.videos, videos)&&(identical(other.page, page) || other.page == page)&&(identical(other.hasNext, hasNext) || other.hasNext == hasNext));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(authors),const DeepCollectionEquality().hash(videos),page,hasNext);
+
+@override
+String toString() {
+  return 'ApiSubscriptionsPage(authors: $authors, videos: $videos, page: $page, hasNext: $hasNext)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ApiSubscriptionsPageCopyWith<$Res>  {
+  factory $ApiSubscriptionsPageCopyWith(ApiSubscriptionsPage value, $Res Function(ApiSubscriptionsPage) _then) = _$ApiSubscriptionsPageCopyWithImpl;
+@useResult
+$Res call({
+ List<ApiAuthorInfo> authors, List<ApiVideoCard> videos, int page, bool hasNext
+});
+
+
+
+
+}
+/// @nodoc
+class _$ApiSubscriptionsPageCopyWithImpl<$Res>
+    implements $ApiSubscriptionsPageCopyWith<$Res> {
+  _$ApiSubscriptionsPageCopyWithImpl(this._self, this._then);
+
+  final ApiSubscriptionsPage _self;
+  final $Res Function(ApiSubscriptionsPage) _then;
+
+/// Create a copy of ApiSubscriptionsPage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? authors = null,Object? videos = null,Object? page = null,Object? hasNext = null,}) {
+  return _then(_self.copyWith(
+authors: null == authors ? _self.authors : authors // ignore: cast_nullable_to_non_nullable
+as List<ApiAuthorInfo>,videos: null == videos ? _self.videos : videos // ignore: cast_nullable_to_non_nullable
+as List<ApiVideoCard>,page: null == page ? _self.page : page // ignore: cast_nullable_to_non_nullable
+as int,hasNext: null == hasNext ? _self.hasNext : hasNext // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ApiSubscriptionsPage].
+extension ApiSubscriptionsPagePatterns on ApiSubscriptionsPage {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ApiSubscriptionsPage value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ApiSubscriptionsPage value)  $default,){
+final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage():
+return $default(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ApiSubscriptionsPage value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<ApiAuthorInfo> authors,  List<ApiVideoCard> videos,  int page,  bool hasNext)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage() when $default != null:
+return $default(_that.authors,_that.videos,_that.page,_that.hasNext);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<ApiAuthorInfo> authors,  List<ApiVideoCard> videos,  int page,  bool hasNext)  $default,) {final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage():
+return $default(_that.authors,_that.videos,_that.page,_that.hasNext);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<ApiAuthorInfo> authors,  List<ApiVideoCard> videos,  int page,  bool hasNext)?  $default,) {final _that = this;
+switch (_that) {
+case _ApiSubscriptionsPage() when $default != null:
+return $default(_that.authors,_that.videos,_that.page,_that.hasNext);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _ApiSubscriptionsPage implements ApiSubscriptionsPage {
+  const _ApiSubscriptionsPage({required final  List<ApiAuthorInfo> authors, required final  List<ApiVideoCard> videos, required this.page, required this.hasNext}): _authors = authors,_videos = videos;
+  
+
+ final  List<ApiAuthorInfo> _authors;
+@override List<ApiAuthorInfo> get authors {
+  if (_authors is EqualUnmodifiableListView) return _authors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_authors);
+}
+
+ final  List<ApiVideoCard> _videos;
+@override List<ApiVideoCard> get videos {
+  if (_videos is EqualUnmodifiableListView) return _videos;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_videos);
+}
+
+@override final  int page;
+@override final  bool hasNext;
+
+/// Create a copy of ApiSubscriptionsPage
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ApiSubscriptionsPageCopyWith<_ApiSubscriptionsPage> get copyWith => __$ApiSubscriptionsPageCopyWithImpl<_ApiSubscriptionsPage>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiSubscriptionsPage&&const DeepCollectionEquality().equals(other._authors, _authors)&&const DeepCollectionEquality().equals(other._videos, _videos)&&(identical(other.page, page) || other.page == page)&&(identical(other.hasNext, hasNext) || other.hasNext == hasNext));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_authors),const DeepCollectionEquality().hash(_videos),page,hasNext);
+
+@override
+String toString() {
+  return 'ApiSubscriptionsPage(authors: $authors, videos: $videos, page: $page, hasNext: $hasNext)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ApiSubscriptionsPageCopyWith<$Res> implements $ApiSubscriptionsPageCopyWith<$Res> {
+  factory _$ApiSubscriptionsPageCopyWith(_ApiSubscriptionsPage value, $Res Function(_ApiSubscriptionsPage) _then) = __$ApiSubscriptionsPageCopyWithImpl;
+@override @useResult
+$Res call({
+ List<ApiAuthorInfo> authors, List<ApiVideoCard> videos, int page, bool hasNext
+});
+
+
+
+
+}
+/// @nodoc
+class __$ApiSubscriptionsPageCopyWithImpl<$Res>
+    implements _$ApiSubscriptionsPageCopyWith<$Res> {
+  __$ApiSubscriptionsPageCopyWithImpl(this._self, this._then);
+
+  final _ApiSubscriptionsPage _self;
+  final $Res Function(_ApiSubscriptionsPage) _then;
+
+/// Create a copy of ApiSubscriptionsPage
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? authors = null,Object? videos = null,Object? page = null,Object? hasNext = null,}) {
+  return _then(_ApiSubscriptionsPage(
+authors: null == authors ? _self._authors : authors // ignore: cast_nullable_to_non_nullable
+as List<ApiAuthorInfo>,videos: null == videos ? _self._videos : videos // ignore: cast_nullable_to_non_nullable
+as List<ApiVideoCard>,page: null == page ? _self.page : page // ignore: cast_nullable_to_non_nullable
+as int,hasNext: null == hasNext ? _self.hasNext : hasNext // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$ApiTagGroup {
 
  String get name; List<ApiFilterOption> get tags;
@@ -6851,7 +7123,7 @@ as List<String>,
 /// @nodoc
 mixin _$ApiVideoDetail {
 
- String get id; String get title; String? get chineseTitle; String get coverUrl; String? get description; String? get duration; String? get views; String? get likes; String? get uploadDate; ApiAuthorInfo? get author; List<String> get tags; List<ApiVideoQuality> get qualities; ApiSeriesInfo? get series; List<ApiVideoCard> get relatedVideos; String? get csrfToken; String? get currentUserId; bool get isFav; int? get favTimes; ApiPlaylistInfo? get playlist; ApiMyListInfo? get myList;
+ String get id; String get title; String? get chineseTitle; String get coverUrl; String? get description; String? get duration; String? get views; String? get likes; String? get uploadDate; ApiAuthorInfo? get author; List<String> get tags; List<ApiVideoQuality> get qualities; ApiSeriesInfo? get series; List<ApiVideoCard> get relatedVideos; String? get formToken; String? get currentUserId; bool get isFav; int? get favTimes; ApiPlaylistInfo? get playlist; ApiMyListInfo? get myList;
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -6862,16 +7134,16 @@ $ApiVideoDetailCopyWith<ApiVideoDetail> get copyWith => _$ApiVideoDetailCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other.tags, tags)&&const DeepCollectionEquality().equals(other.qualities, qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other.relatedVideos, relatedVideos)&&(identical(other.csrfToken, csrfToken) || other.csrfToken == csrfToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other.tags, tags)&&const DeepCollectionEquality().equals(other.qualities, qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other.relatedVideos, relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(tags),const DeepCollectionEquality().hash(qualities),series,const DeepCollectionEquality().hash(relatedVideos),csrfToken,currentUserId,isFav,favTimes,playlist,myList]);
+int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(tags),const DeepCollectionEquality().hash(qualities),series,const DeepCollectionEquality().hash(relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
 
 @override
 String toString() {
-  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, csrfToken: $csrfToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
+  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
 }
 
 
@@ -6882,7 +7154,7 @@ abstract mixin class $ApiVideoDetailCopyWith<$Res>  {
   factory $ApiVideoDetailCopyWith(ApiVideoDetail value, $Res Function(ApiVideoDetail) _then) = _$ApiVideoDetailCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? csrfToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
+ String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
 });
 
 
@@ -6899,7 +7171,7 @@ class _$ApiVideoDetailCopyWithImpl<$Res>
 
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? csrfToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -6915,7 +7187,7 @@ as ApiAuthorInfo?,tags: null == tags ? _self.tags : tags // ignore: cast_nullabl
 as List<String>,qualities: null == qualities ? _self.qualities : qualities // ignore: cast_nullable_to_non_nullable
 as List<ApiVideoQuality>,series: freezed == series ? _self.series : series // ignore: cast_nullable_to_non_nullable
 as ApiSeriesInfo?,relatedVideos: null == relatedVideos ? _self.relatedVideos : relatedVideos // ignore: cast_nullable_to_non_nullable
-as List<ApiVideoCard>,csrfToken: freezed == csrfToken ? _self.csrfToken : csrfToken // ignore: cast_nullable_to_non_nullable
+as List<ApiVideoCard>,formToken: freezed == formToken ? _self.formToken : formToken // ignore: cast_nullable_to_non_nullable
 as String?,currentUserId: freezed == currentUserId ? _self.currentUserId : currentUserId // ignore: cast_nullable_to_non_nullable
 as String?,isFav: null == isFav ? _self.isFav : isFav // ignore: cast_nullable_to_non_nullable
 as bool,favTimes: freezed == favTimes ? _self.favTimes : favTimes // ignore: cast_nullable_to_non_nullable
@@ -7051,10 +7323,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? csrfToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail() when $default != null:
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.csrfToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
   return orElse();
 
 }
@@ -7072,10 +7344,10 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? csrfToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)  $default,) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail():
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.csrfToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);}
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -7089,10 +7361,10 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? csrfToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail() when $default != null:
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.csrfToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
   return null;
 
 }
@@ -7104,7 +7376,7 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 
 
 class _ApiVideoDetail implements ApiVideoDetail {
-  const _ApiVideoDetail({required this.id, required this.title, this.chineseTitle, required this.coverUrl, this.description, this.duration, this.views, this.likes, this.uploadDate, this.author, required final  List<String> tags, required final  List<ApiVideoQuality> qualities, this.series, required final  List<ApiVideoCard> relatedVideos, this.csrfToken, this.currentUserId, required this.isFav, this.favTimes, this.playlist, this.myList}): _tags = tags,_qualities = qualities,_relatedVideos = relatedVideos;
+  const _ApiVideoDetail({required this.id, required this.title, this.chineseTitle, required this.coverUrl, this.description, this.duration, this.views, this.likes, this.uploadDate, this.author, required final  List<String> tags, required final  List<ApiVideoQuality> qualities, this.series, required final  List<ApiVideoCard> relatedVideos, this.formToken, this.currentUserId, required this.isFav, this.favTimes, this.playlist, this.myList}): _tags = tags,_qualities = qualities,_relatedVideos = relatedVideos;
   
 
 @override final  String id;
@@ -7139,7 +7411,7 @@ class _ApiVideoDetail implements ApiVideoDetail {
   return EqualUnmodifiableListView(_relatedVideos);
 }
 
-@override final  String? csrfToken;
+@override final  String? formToken;
 @override final  String? currentUserId;
 @override final  bool isFav;
 @override final  int? favTimes;
@@ -7156,16 +7428,16 @@ _$ApiVideoDetailCopyWith<_ApiVideoDetail> get copyWith => __$ApiVideoDetailCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other._tags, _tags)&&const DeepCollectionEquality().equals(other._qualities, _qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other._relatedVideos, _relatedVideos)&&(identical(other.csrfToken, csrfToken) || other.csrfToken == csrfToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other._tags, _tags)&&const DeepCollectionEquality().equals(other._qualities, _qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other._relatedVideos, _relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(_tags),const DeepCollectionEquality().hash(_qualities),series,const DeepCollectionEquality().hash(_relatedVideos),csrfToken,currentUserId,isFav,favTimes,playlist,myList]);
+int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(_tags),const DeepCollectionEquality().hash(_qualities),series,const DeepCollectionEquality().hash(_relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
 
 @override
 String toString() {
-  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, csrfToken: $csrfToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
+  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
 }
 
 
@@ -7176,7 +7448,7 @@ abstract mixin class _$ApiVideoDetailCopyWith<$Res> implements $ApiVideoDetailCo
   factory _$ApiVideoDetailCopyWith(_ApiVideoDetail value, $Res Function(_ApiVideoDetail) _then) = __$ApiVideoDetailCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? csrfToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
+ String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
 });
 
 
@@ -7193,7 +7465,7 @@ class __$ApiVideoDetailCopyWithImpl<$Res>
 
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? csrfToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
   return _then(_ApiVideoDetail(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -7209,7 +7481,7 @@ as ApiAuthorInfo?,tags: null == tags ? _self._tags : tags // ignore: cast_nullab
 as List<String>,qualities: null == qualities ? _self._qualities : qualities // ignore: cast_nullable_to_non_nullable
 as List<ApiVideoQuality>,series: freezed == series ? _self.series : series // ignore: cast_nullable_to_non_nullable
 as ApiSeriesInfo?,relatedVideos: null == relatedVideos ? _self._relatedVideos : relatedVideos // ignore: cast_nullable_to_non_nullable
-as List<ApiVideoCard>,csrfToken: freezed == csrfToken ? _self.csrfToken : csrfToken // ignore: cast_nullable_to_non_nullable
+as List<ApiVideoCard>,formToken: freezed == formToken ? _self.formToken : formToken // ignore: cast_nullable_to_non_nullable
 as String?,currentUserId: freezed == currentUserId ? _self.currentUserId : currentUserId // ignore: cast_nullable_to_non_nullable
 as String?,isFav: null == isFav ? _self.isFav : isFav // ignore: cast_nullable_to_non_nullable
 as bool,favTimes: freezed == favTimes ? _self.favTimes : favTimes // ignore: cast_nullable_to_non_nullable

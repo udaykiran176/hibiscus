@@ -3,7 +3,7 @@
 use flutter_rust_bridge::frb;
 use crate::frb_generated::StreamSink;
 use crate::api::models::{ApiDownloadTask, ApiDownloadStatus};
-use crate::core::{storage, network, parser};
+use crate::core::{storage, network, parser, runtime};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::collections::HashMap;
@@ -33,6 +33,12 @@ pub async fn add_download(
     tags: Vec<String>,
 ) -> anyhow::Result<ApiDownloadTask> {
     if let Ok(Some(record)) = storage::get_download_by_video_id(&video_id) {
+        if record.cover_path.is_none() && !record.cover_url.trim().is_empty() {
+            if let Ok(Some(cover_path)) = download_cover(&record.video_id, &record.cover_url).await {
+                let _ = storage::update_download_cover_path(&record.video_id, &cover_path);
+            }
+        }
+        let record = storage::get_download_by_video_id(&video_id)?.unwrap_or(record);
         let task = map_record(record.clone());
         if matches!(record.status, storage::DownloadStatus::Queued | storage::DownloadStatus::Failed | storage::DownloadStatus::Paused) {
             if let Some(save_path) = record.save_path.clone() {
@@ -319,7 +325,7 @@ async fn download_cover(video_id: &str, cover_url: &str) -> anyhow::Result<Optio
 }
 
 fn spawn_download(video_id: String, save_path_hint: PathBuf) {
-    tokio::spawn(async move {
+    runtime::spawn(async move {
         let mut map = task_controls().lock().await;
         if map.contains_key(&video_id) {
             return;

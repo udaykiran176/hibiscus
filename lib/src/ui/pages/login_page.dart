@@ -11,6 +11,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const _baseHost = 'hanime1.me';
   static const _loginUrl = 'https://hanime1.me/login';
   static const _userAgent =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -86,6 +87,13 @@ class _LoginPageState extends State<LoginPage> {
           javaScriptEnabled: true,
           thirdPartyCookiesEnabled: true,
         ),
+        onLoadStop: (controller, url) async {
+          final u = url?.uriValue;
+          if (u == null) return;
+          if (u.host == _baseHost && !u.path.startsWith('/login')) {
+            await _finishLogin();
+          }
+        },
         onProgressChanged: (controller, progress) {
           _progress.value = progress / 100.0;
         },
@@ -93,4 +101,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

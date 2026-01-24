@@ -6,17 +6,24 @@ import 'package:hibiscus/src/rust/api/models.dart';
 class VideoCard extends StatelessWidget {
   final ApiVideoCard video;
   final VoidCallback? onTap;
+  final double sizeScale;
   
   const VideoCard({
     super.key,
     required this.video,
     this.onTap,
+    this.sizeScale = 1.0,
   });
   
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
+    TextStyle? scaled(TextStyle? style, double fallback) {
+      final base = style?.fontSize ?? fallback;
+      return (style ?? const TextStyle()).copyWith(fontSize: base * sizeScale);
+    }
     
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -40,19 +47,19 @@ class VideoCard extends StatelessWidget {
                       right: 8,
                       bottom: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6 * sizeScale,
+                          vertical: 2 * sizeScale,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black87,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(4 * sizeScale),
                         ),
                         child: Text(
                           video.duration!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 12 * sizeScale,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -64,7 +71,7 @@ class VideoCard extends StatelessWidget {
             
             // 信息区域
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(8 * sizeScale),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -72,16 +79,16 @@ class VideoCard extends StatelessWidget {
                   // 标题
                   Text(
                     video.title,
-                    style: theme.textTheme.bodyMedium,
+                    style: scaled(theme.textTheme.bodyMedium, 14),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4 * sizeScale),
                   // 播放量
                   if (video.views != null)
                     Text(
                       '${video.views} 播放',
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      style: scaled(theme.textTheme.bodySmall, 12)?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),

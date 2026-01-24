@@ -39,7 +39,8 @@ pub struct ApiVideoDetail {
     pub qualities: Vec<ApiVideoQuality>,
     pub series: Option<ApiSeriesInfo>,
     pub related_videos: Vec<ApiVideoCard>,
-    pub csrf_token: Option<String>,
+    /// HTML 表单 hidden input `_token`（Laravel 表单 token）
+    pub form_token: Option<String>,
     pub current_user_id: Option<String>,
     pub is_fav: bool,
     pub fav_times: Option<i32>,
@@ -63,6 +64,16 @@ pub struct ApiAuthorInfo {
     pub name: String,
     pub avatar_url: Option<String>,
     pub is_subscribed: bool,
+}
+
+/// 我的订阅页数据
+#[frb(dart_metadata=("freezed"))]
+#[derive(Debug, Clone)]
+pub struct ApiSubscriptionsPage {
+    pub authors: Vec<ApiAuthorInfo>,
+    pub videos: Vec<ApiVideoCard>,
+    pub page: u32,
+    pub has_next: bool,
 }
 
 /// 系列信息
@@ -118,7 +129,8 @@ pub struct ApiMyListItem {
 #[frb(dart_metadata=("freezed"))]
 #[derive(Debug, Clone)]
 pub struct ApiHomePage {
-    pub csrf_token: Option<String>,
+    /// HTML 表单 hidden input `_token`（Laravel 表单 token）
+    pub form_token: Option<String>,
     pub avatar_url: Option<String>,
     pub username: Option<String>,
     pub banner: Option<ApiBanner>,
