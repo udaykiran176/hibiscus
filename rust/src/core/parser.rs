@@ -5,6 +5,7 @@ use scraper::{Html, Selector, ElementRef};
 use anyhow::Result;
 use regex::Regex;
 use once_cell::sync::Lazy;
+use serde_json::Value;
 
 // ============================================================================
 // 正则表达式
@@ -20,6 +21,10 @@ static VIEW_AND_DATE_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 static VIDEO_CODE_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"watch\?v=(\d+)"#).unwrap()
+});
+
+static DIGITS_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"\d+"#).unwrap()
 });
 
 // ============================================================================
@@ -57,9 +62,12 @@ pub(crate) struct VideoDetail {
     pub chinese_title: Option<String>,
     pub description: String,
     pub cover_url: String,
+    pub duration: Option<String>,
     pub tags: Vec<String>,
     pub views: String,
-    pub likes: String,
+    pub likes_count: Option<u32>,
+    pub dislikes_count: Option<u32>,
+    pub like_percent: Option<u32>,
     pub upload_date: String,
     pub video_sources: Vec<VideoSource>,
     pub related_videos: Vec<VideoCard>,
@@ -70,6 +78,17 @@ pub(crate) struct VideoDetail {
     pub fav_times: Option<i32>,
     pub playlist: Option<Playlist>,
     pub my_list: Option<MyListInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ParsedComment {
+    pub id: String,
+    pub user_name: String,
+    pub user_avatar: Option<String>,
+    pub time: String,
+    pub content: String,
+    pub likes: u32,
+    pub has_more_replies: bool,
 }
 
 /// 视频源（内部使用）
@@ -372,12 +391,20 @@ pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
     
     // 视频详情区域
     let detail_wrapper_selector = Selector::parse("div.video-details-wrapper").unwrap();
-    let (chinese_title, description, views, upload_date) = 
+    let (chinese_title, description) =
         if let Some(wrapper) = document.select(&detail_wrapper_selector).next() {
-            parse_video_details(&wrapper)
+            parse_video_details_caption(&wrapper)
         } else {
-            (None, String::new(), String::new(), String::new())
+            (None, String::new())
         };
+
+    let (views, upload_date) = parse_views_and_upload_date(&document);
+
+    // 时长（秒）
+    let duration = parse_duration(&document);
+
+    // 点赞/踩（计数 + 百分比）
+    let (likes_count, dislikes_count, like_percent) = parse_like_stats(&document);
     
     // 封面
     let cover_selector = Selector::parse("meta[property='og:image']").unwrap();
@@ -430,8 +457,11 @@ pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
         description,
         cover_url,
         tags,
+        duration,
         views,
-        likes: fav_times.map(|n| n.to_string()).unwrap_or_default(),
+        likes_count,
+        dislikes_count,
+        like_percent,
         upload_date,
         video_sources,
         related_videos,
@@ -446,8 +476,8 @@ pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
 }
 
 
-/// 解析视频详情信息
-fn parse_video_details(wrapper: &ElementRef) -> (Option<String>, String, String, String) {
+/// 解析视频详情信息（标题/简介）
+fn parse_video_details_caption(wrapper: &ElementRef) -> (Option<String>, String) {
     let caption_selector = Selector::parse("div[class^=video-caption-text]").unwrap();
     
     let (chinese_title, description) = if let Some(caption) = wrapper.select(&caption_selector).next() {
@@ -458,22 +488,249 @@ fn parse_video_details(wrapper: &ElementRef) -> (Option<String>, String, String,
     } else {
         (None, String::new())
     };
-    
-    // 播放量和上传时间
-    let info_selector = Selector::parse("div > div > div").unwrap();
-    let info_text = wrapper.select(&info_selector).next()
-        .map(|el| el.text().collect::<String>())
+    (chinese_title, description)
+}
+
+fn parse_views_and_upload_date(document: &Html) -> (String, String) {
+    let sel = Selector::parse("div.video-details-wrapper").unwrap();
+    for el in document.select(&sel) {
+        let text = el.text().collect::<String>().replace('\u{a0}', " ");
+        if let Some(caps) = VIEW_AND_DATE_REGEX.captures(&text) {
+            let views = caps.get(2).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            let date = caps.get(3).map(|m| m.as_str().trim().to_string()).unwrap_or_default();
+            if !views.is_empty() || !date.is_empty() {
+                return (views, date);
+            }
+        }
+    }
+    (String::new(), String::new())
+}
+
+fn parse_duration(document: &Html) -> Option<String> {
+    let sel = Selector::parse("meta[property='og:video:duration']").unwrap();
+    let secs = document
+        .select(&sel)
+        .next()
+        .and_then(|el| el.value().attr("content"))
+        .and_then(|v| v.trim().parse::<u32>().ok());
+    secs.map(format_duration)
+}
+
+fn format_duration(secs: u32) -> String {
+    let h = secs / 3600;
+    let m = (secs % 3600) / 60;
+    let s = secs % 60;
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
+    }
+}
+
+fn parse_like_stats(document: &Html) -> (Option<u32>, Option<u32>, Option<u32>) {
+    let like_form = Selector::parse("#video-like-form").unwrap();
+    let input_like = Selector::parse("input[name=likes-count]").unwrap();
+    let input_unlike = Selector::parse("input[name=unlikes-count]").unwrap();
+    if let Some(form) = document.select(&like_form).next() {
+        let likes = form
+            .select(&input_like)
+            .next()
+            .and_then(|el| el.value().attr("value"))
+            .and_then(|v| v.parse::<u32>().ok());
+        let unlikes = form
+            .select(&input_unlike)
+            .next()
+            .and_then(|el| el.value().attr("value"))
+            .and_then(|v| v.parse::<u32>().ok());
+        let percent = match (likes, unlikes) {
+            (Some(l), Some(u)) if l + u > 0 => Some(((l as f64) * 100.0 / ((l + u) as f64)).round() as u32),
+            _ => None,
+        };
+        return (likes, unlikes, percent);
+    }
+    (None, None, None)
+}
+
+pub(crate) fn parse_video_comments(body: &str) -> Result<(Option<String>, Option<String>, Vec<ParsedComment>)> {
+    let json: Value = serde_json::from_str(body)?;
+    let comments_html = json
+        .get("comments")
+        .and_then(|v| v.as_str())
         .unwrap_or_default();
-    
-    let (views, upload_date) = if let Some(caps) = VIEW_AND_DATE_REGEX.captures(&info_text) {
-        let views = caps.get(2).map(|m| m.as_str().to_string()).unwrap_or_default();
-        let date = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
-        (views, date)
+    let fragment = Html::parse_fragment(comments_html);
+
+    let token_sel = Selector::parse("input[name=_token]").unwrap();
+    let csrf_token = fragment
+        .select(&token_sel)
+        .next()
+        .and_then(|el| el.value().attr("value"))
+        .map(|s| s.to_string());
+
+    let user_id_sel = Selector::parse("input[name=comment-user-id]").unwrap();
+    let current_user_id = fragment
+        .select(&user_id_sel)
+        .next()
+        .and_then(|el| el.value().attr("value"))
+        .map(|s| s.to_string());
+
+    let child_sel = Selector::parse("#comment-start > *").unwrap();
+    let children: Vec<_> = fragment.select(&child_sel).collect();
+    let mut comments = Vec::new();
+    for chunk in children.chunks(4) {
+        let combined = chunk.iter().map(|el| el.html()).collect::<String>();
+        let doc = Html::parse_fragment(&combined);
+        if let Some(c) = parse_single_comment(&doc) {
+            comments.push(c);
+        }
+    }
+
+    Ok((csrf_token, current_user_id, comments))
+}
+
+pub(crate) fn parse_comment_replies(body: &str) -> Result<Vec<ParsedComment>> {
+    let json: Value = serde_json::from_str(body)?;
+    let replies_html = json
+        .get("replies")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default();
+    let fragment = Html::parse_fragment(replies_html);
+
+    let child_sel = Selector::parse("div[id^='reply-start'] > div").unwrap();
+    let children: Vec<_> = fragment.select(&child_sel).collect();
+    let mut replies = Vec::new();
+    let mut i = 0;
+    while i + 1 < children.len() {
+        let combined = format!("{}{}", children[i].html(), children[i + 1].html());
+        let doc = Html::parse_fragment(&combined);
+        if let Some(c) = parse_single_reply(&doc) {
+            replies.push(c);
+        }
+        i += 2;
+    }
+    Ok(replies)
+}
+
+fn parse_single_comment(doc: &Html) -> Option<ParsedComment> {
+    let avatar_sel = Selector::parse("img").ok()?;
+    let avatar = doc
+        .select(&avatar_sel)
+        .next()
+        .and_then(|img| img.value().attr("src"))
+        .map(make_absolute_url);
+
+    let text_sel = Selector::parse(".comment-index-text").ok()?;
+    let texts: Vec<_> = doc.select(&text_sel).collect();
+    let (user_name, time) = if let Some(first) = texts.first() {
+        let name_sel = Selector::parse("a").ok()?;
+        let user_name = first
+            .select(&name_sel)
+            .next()
+            .map(|a| a.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+        let span_sel = Selector::parse("span").ok()?;
+        let time = first
+            .select(&span_sel)
+            .next()
+            .map(|s| s.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+        (user_name, time)
     } else {
         (String::new(), String::new())
     };
-    
-    (chinese_title, description, views, upload_date)
+
+    let content = texts
+        .get(1)
+        .map(|el| el.text().collect::<String>().trim().to_string())
+        .unwrap_or_default();
+
+    let id_sel = Selector::parse("div[id^='reply-section-wrapper']").ok()?;
+    let id = doc
+        .select(&id_sel)
+        .next()
+        .and_then(|el| el.value().attr("id"))
+        .and_then(|raw| raw.rsplit('-').next())
+        .unwrap_or("-1")
+        .to_string();
+
+    let has_more_sel = Selector::parse("div[class^='load-replies-btn']").ok()?;
+    let has_more_replies = doc.select(&has_more_sel).next().is_some();
+
+    let like_sel = Selector::parse("#comment-like-form-wrapper span[style]").ok()?;
+    let like_text = doc
+        .select(&like_sel)
+        .nth(1)
+        .map(|el| el.text().collect::<String>())
+        .unwrap_or_default();
+    let likes = DIGITS_REGEX
+        .find(&like_text)
+        .and_then(|m| m.as_str().parse::<u32>().ok())
+        .unwrap_or(0);
+
+    Some(ParsedComment {
+        id,
+        user_name,
+        user_avatar: avatar,
+        time,
+        content,
+        likes,
+        has_more_replies,
+    })
+}
+
+fn parse_single_reply(doc: &Html) -> Option<ParsedComment> {
+    // Reply HTML is similar; best-effort reuse selectors.
+    let avatar_sel = Selector::parse("img").ok()?;
+    let avatar = doc
+        .select(&avatar_sel)
+        .next()
+        .and_then(|img| img.value().attr("src"))
+        .map(make_absolute_url);
+
+    let text_sel = Selector::parse(".comment-index-text").ok()?;
+    let texts: Vec<_> = doc.select(&text_sel).collect();
+    let (user_name, time) = if let Some(first) = texts.first() {
+        let name_sel = Selector::parse("a").ok()?;
+        let user_name = first
+            .select(&name_sel)
+            .next()
+            .map(|a| a.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+        let span_sel = Selector::parse("span").ok()?;
+        let time = first
+            .select(&span_sel)
+            .next()
+            .map(|s| s.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+        (user_name, time)
+    } else {
+        (String::new(), String::new())
+    };
+
+    let content = texts
+        .get(1)
+        .map(|el| el.text().collect::<String>().trim().to_string())
+        .unwrap_or_default();
+
+    let like_sel = Selector::parse("span[style]").ok()?;
+    let like_text = doc
+        .select(&like_sel)
+        .nth(1)
+        .map(|el| el.text().collect::<String>())
+        .unwrap_or_default();
+    let likes = DIGITS_REGEX
+        .find(&like_text)
+        .and_then(|m| m.as_str().parse::<u32>().ok())
+        .unwrap_or(0);
+
+    Some(ParsedComment {
+        id: "-1".to_string(),
+        user_name,
+        user_avatar: avatar,
+        time,
+        content,
+        likes,
+        has_more_replies: false,
+    })
 }
 
 /// 解析视频源

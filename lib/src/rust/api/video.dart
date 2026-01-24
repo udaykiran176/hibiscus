@@ -20,6 +20,10 @@ Future<ApiCommentList> getVideoComments({
   page: page,
 );
 
+/// 获取评论的回复
+Future<List<ApiComment>> getCommentReplies({required String commentId}) =>
+    RustLib.instance.api.crateApiVideoGetCommentReplies(commentId: commentId);
+
 /// 获取视频播放地址
 Future<String> getVideoUrl({
   required String videoId,

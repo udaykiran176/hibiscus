@@ -7135,7 +7135,7 @@ as List<String>,
 /// @nodoc
 mixin _$ApiVideoDetail {
 
- String get id; String get title; String? get chineseTitle; String get coverUrl; String? get description; String? get duration; String? get views; String? get likes; String? get uploadDate; ApiAuthorInfo? get author; List<String> get tags; List<ApiVideoQuality> get qualities; ApiSeriesInfo? get series; List<ApiVideoCard> get relatedVideos; String? get formToken; String? get currentUserId; bool get isFav; int? get favTimes; ApiPlaylistInfo? get playlist; ApiMyListInfo? get myList;
+ String get id; String get title; String? get chineseTitle; String get coverUrl; String? get description; String? get duration; String? get views; int? get likePercent; int? get dislikePercent; int? get likesCount; int? get dislikesCount; String? get uploadDate; ApiAuthorInfo? get author; List<String> get tags; List<ApiVideoQuality> get qualities; ApiSeriesInfo? get series; List<ApiVideoCard> get relatedVideos; String? get formToken; String? get currentUserId; bool get isFav; int? get favTimes; ApiPlaylistInfo? get playlist; ApiMyListInfo? get myList;
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -7146,16 +7146,16 @@ $ApiVideoDetailCopyWith<ApiVideoDetail> get copyWith => _$ApiVideoDetailCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other.tags, tags)&&const DeepCollectionEquality().equals(other.qualities, qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other.relatedVideos, relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likePercent, likePercent) || other.likePercent == likePercent)&&(identical(other.dislikePercent, dislikePercent) || other.dislikePercent == dislikePercent)&&(identical(other.likesCount, likesCount) || other.likesCount == likesCount)&&(identical(other.dislikesCount, dislikesCount) || other.dislikesCount == dislikesCount)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other.tags, tags)&&const DeepCollectionEquality().equals(other.qualities, qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other.relatedVideos, relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(tags),const DeepCollectionEquality().hash(qualities),series,const DeepCollectionEquality().hash(relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
+int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likePercent,dislikePercent,likesCount,dislikesCount,uploadDate,author,const DeepCollectionEquality().hash(tags),const DeepCollectionEquality().hash(qualities),series,const DeepCollectionEquality().hash(relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
 
 @override
 String toString() {
-  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
+  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likePercent: $likePercent, dislikePercent: $dislikePercent, likesCount: $likesCount, dislikesCount: $dislikesCount, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
 }
 
 
@@ -7166,7 +7166,7 @@ abstract mixin class $ApiVideoDetailCopyWith<$Res>  {
   factory $ApiVideoDetailCopyWith(ApiVideoDetail value, $Res Function(ApiVideoDetail) _then) = _$ApiVideoDetailCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
+ String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, int? likePercent, int? dislikePercent, int? likesCount, int? dislikesCount, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
 });
 
 
@@ -7183,7 +7183,7 @@ class _$ApiVideoDetailCopyWithImpl<$Res>
 
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likePercent = freezed,Object? dislikePercent = freezed,Object? likesCount = freezed,Object? dislikesCount = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -7192,8 +7192,11 @@ as String?,coverUrl: null == coverUrl ? _self.coverUrl : coverUrl // ignore: cas
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,duration: freezed == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as String?,views: freezed == views ? _self.views : views // ignore: cast_nullable_to_non_nullable
-as String?,likes: freezed == likes ? _self.likes : likes // ignore: cast_nullable_to_non_nullable
-as String?,uploadDate: freezed == uploadDate ? _self.uploadDate : uploadDate // ignore: cast_nullable_to_non_nullable
+as String?,likePercent: freezed == likePercent ? _self.likePercent : likePercent // ignore: cast_nullable_to_non_nullable
+as int?,dislikePercent: freezed == dislikePercent ? _self.dislikePercent : dislikePercent // ignore: cast_nullable_to_non_nullable
+as int?,likesCount: freezed == likesCount ? _self.likesCount : likesCount // ignore: cast_nullable_to_non_nullable
+as int?,dislikesCount: freezed == dislikesCount ? _self.dislikesCount : dislikesCount // ignore: cast_nullable_to_non_nullable
+as int?,uploadDate: freezed == uploadDate ? _self.uploadDate : uploadDate // ignore: cast_nullable_to_non_nullable
 as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
 as ApiAuthorInfo?,tags: null == tags ? _self.tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,qualities: null == qualities ? _self.qualities : qualities // ignore: cast_nullable_to_non_nullable
@@ -7335,10 +7338,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  int? likePercent,  int? dislikePercent,  int? likesCount,  int? dislikesCount,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail() when $default != null:
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likePercent,_that.dislikePercent,_that.likesCount,_that.dislikesCount,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
   return orElse();
 
 }
@@ -7356,10 +7359,10 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  int? likePercent,  int? dislikePercent,  int? likesCount,  int? dislikesCount,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)  $default,) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail():
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);}
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likePercent,_that.dislikePercent,_that.likesCount,_that.dislikesCount,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -7373,10 +7376,10 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  String? likes,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String? chineseTitle,  String coverUrl,  String? description,  String? duration,  String? views,  int? likePercent,  int? dislikePercent,  int? likesCount,  int? dislikesCount,  String? uploadDate,  ApiAuthorInfo? author,  List<String> tags,  List<ApiVideoQuality> qualities,  ApiSeriesInfo? series,  List<ApiVideoCard> relatedVideos,  String? formToken,  String? currentUserId,  bool isFav,  int? favTimes,  ApiPlaylistInfo? playlist,  ApiMyListInfo? myList)?  $default,) {final _that = this;
 switch (_that) {
 case _ApiVideoDetail() when $default != null:
-return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likes,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
+return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.description,_that.duration,_that.views,_that.likePercent,_that.dislikePercent,_that.likesCount,_that.dislikesCount,_that.uploadDate,_that.author,_that.tags,_that.qualities,_that.series,_that.relatedVideos,_that.formToken,_that.currentUserId,_that.isFav,_that.favTimes,_that.playlist,_that.myList);case _:
   return null;
 
 }
@@ -7388,7 +7391,7 @@ return $default(_that.id,_that.title,_that.chineseTitle,_that.coverUrl,_that.des
 
 
 class _ApiVideoDetail implements ApiVideoDetail {
-  const _ApiVideoDetail({required this.id, required this.title, this.chineseTitle, required this.coverUrl, this.description, this.duration, this.views, this.likes, this.uploadDate, this.author, required final  List<String> tags, required final  List<ApiVideoQuality> qualities, this.series, required final  List<ApiVideoCard> relatedVideos, this.formToken, this.currentUserId, required this.isFav, this.favTimes, this.playlist, this.myList}): _tags = tags,_qualities = qualities,_relatedVideos = relatedVideos;
+  const _ApiVideoDetail({required this.id, required this.title, this.chineseTitle, required this.coverUrl, this.description, this.duration, this.views, this.likePercent, this.dislikePercent, this.likesCount, this.dislikesCount, this.uploadDate, this.author, required final  List<String> tags, required final  List<ApiVideoQuality> qualities, this.series, required final  List<ApiVideoCard> relatedVideos, this.formToken, this.currentUserId, required this.isFav, this.favTimes, this.playlist, this.myList}): _tags = tags,_qualities = qualities,_relatedVideos = relatedVideos;
   
 
 @override final  String id;
@@ -7398,7 +7401,10 @@ class _ApiVideoDetail implements ApiVideoDetail {
 @override final  String? description;
 @override final  String? duration;
 @override final  String? views;
-@override final  String? likes;
+@override final  int? likePercent;
+@override final  int? dislikePercent;
+@override final  int? likesCount;
+@override final  int? dislikesCount;
 @override final  String? uploadDate;
 @override final  ApiAuthorInfo? author;
  final  List<String> _tags;
@@ -7440,16 +7446,16 @@ _$ApiVideoDetailCopyWith<_ApiVideoDetail> get copyWith => __$ApiVideoDetailCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likes, likes) || other.likes == likes)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other._tags, _tags)&&const DeepCollectionEquality().equals(other._qualities, _qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other._relatedVideos, _relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ApiVideoDetail&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.chineseTitle, chineseTitle) || other.chineseTitle == chineseTitle)&&(identical(other.coverUrl, coverUrl) || other.coverUrl == coverUrl)&&(identical(other.description, description) || other.description == description)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.views, views) || other.views == views)&&(identical(other.likePercent, likePercent) || other.likePercent == likePercent)&&(identical(other.dislikePercent, dislikePercent) || other.dislikePercent == dislikePercent)&&(identical(other.likesCount, likesCount) || other.likesCount == likesCount)&&(identical(other.dislikesCount, dislikesCount) || other.dislikesCount == dislikesCount)&&(identical(other.uploadDate, uploadDate) || other.uploadDate == uploadDate)&&(identical(other.author, author) || other.author == author)&&const DeepCollectionEquality().equals(other._tags, _tags)&&const DeepCollectionEquality().equals(other._qualities, _qualities)&&(identical(other.series, series) || other.series == series)&&const DeepCollectionEquality().equals(other._relatedVideos, _relatedVideos)&&(identical(other.formToken, formToken) || other.formToken == formToken)&&(identical(other.currentUserId, currentUserId) || other.currentUserId == currentUserId)&&(identical(other.isFav, isFav) || other.isFav == isFav)&&(identical(other.favTimes, favTimes) || other.favTimes == favTimes)&&(identical(other.playlist, playlist) || other.playlist == playlist)&&(identical(other.myList, myList) || other.myList == myList));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likes,uploadDate,author,const DeepCollectionEquality().hash(_tags),const DeepCollectionEquality().hash(_qualities),series,const DeepCollectionEquality().hash(_relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
+int get hashCode => Object.hashAll([runtimeType,id,title,chineseTitle,coverUrl,description,duration,views,likePercent,dislikePercent,likesCount,dislikesCount,uploadDate,author,const DeepCollectionEquality().hash(_tags),const DeepCollectionEquality().hash(_qualities),series,const DeepCollectionEquality().hash(_relatedVideos),formToken,currentUserId,isFav,favTimes,playlist,myList]);
 
 @override
 String toString() {
-  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likes: $likes, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
+  return 'ApiVideoDetail(id: $id, title: $title, chineseTitle: $chineseTitle, coverUrl: $coverUrl, description: $description, duration: $duration, views: $views, likePercent: $likePercent, dislikePercent: $dislikePercent, likesCount: $likesCount, dislikesCount: $dislikesCount, uploadDate: $uploadDate, author: $author, tags: $tags, qualities: $qualities, series: $series, relatedVideos: $relatedVideos, formToken: $formToken, currentUserId: $currentUserId, isFav: $isFav, favTimes: $favTimes, playlist: $playlist, myList: $myList)';
 }
 
 
@@ -7460,7 +7466,7 @@ abstract mixin class _$ApiVideoDetailCopyWith<$Res> implements $ApiVideoDetailCo
   factory _$ApiVideoDetailCopyWith(_ApiVideoDetail value, $Res Function(_ApiVideoDetail) _then) = __$ApiVideoDetailCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, String? likes, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
+ String id, String title, String? chineseTitle, String coverUrl, String? description, String? duration, String? views, int? likePercent, int? dislikePercent, int? likesCount, int? dislikesCount, String? uploadDate, ApiAuthorInfo? author, List<String> tags, List<ApiVideoQuality> qualities, ApiSeriesInfo? series, List<ApiVideoCard> relatedVideos, String? formToken, String? currentUserId, bool isFav, int? favTimes, ApiPlaylistInfo? playlist, ApiMyListInfo? myList
 });
 
 
@@ -7477,7 +7483,7 @@ class __$ApiVideoDetailCopyWithImpl<$Res>
 
 /// Create a copy of ApiVideoDetail
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likes = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? chineseTitle = freezed,Object? coverUrl = null,Object? description = freezed,Object? duration = freezed,Object? views = freezed,Object? likePercent = freezed,Object? dislikePercent = freezed,Object? likesCount = freezed,Object? dislikesCount = freezed,Object? uploadDate = freezed,Object? author = freezed,Object? tags = null,Object? qualities = null,Object? series = freezed,Object? relatedVideos = null,Object? formToken = freezed,Object? currentUserId = freezed,Object? isFav = null,Object? favTimes = freezed,Object? playlist = freezed,Object? myList = freezed,}) {
   return _then(_ApiVideoDetail(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -7486,8 +7492,11 @@ as String?,coverUrl: null == coverUrl ? _self.coverUrl : coverUrl // ignore: cas
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,duration: freezed == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as String?,views: freezed == views ? _self.views : views // ignore: cast_nullable_to_non_nullable
-as String?,likes: freezed == likes ? _self.likes : likes // ignore: cast_nullable_to_non_nullable
-as String?,uploadDate: freezed == uploadDate ? _self.uploadDate : uploadDate // ignore: cast_nullable_to_non_nullable
+as String?,likePercent: freezed == likePercent ? _self.likePercent : likePercent // ignore: cast_nullable_to_non_nullable
+as int?,dislikePercent: freezed == dislikePercent ? _self.dislikePercent : dislikePercent // ignore: cast_nullable_to_non_nullable
+as int?,likesCount: freezed == likesCount ? _self.likesCount : likesCount // ignore: cast_nullable_to_non_nullable
+as int?,dislikesCount: freezed == dislikesCount ? _self.dislikesCount : dislikesCount // ignore: cast_nullable_to_non_nullable
+as int?,uploadDate: freezed == uploadDate ? _self.uploadDate : uploadDate // ignore: cast_nullable_to_non_nullable
 as String?,author: freezed == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
 as ApiAuthorInfo?,tags: null == tags ? _self._tags : tags // ignore: cast_nullable_to_non_nullable
 as List<String>,qualities: null == qualities ? _self._qualities : qualities // ignore: cast_nullable_to_non_nullable

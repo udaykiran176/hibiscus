@@ -5,8 +5,8 @@ use crate::api::models::{
     ApiVideoDetail, ApiVideoQuality, ApiAuthorInfo, ApiCommentList, 
     ApiComment, ApiVideoCard, ApiPlaylistInfo, ApiMyListInfo, ApiMyListItem
 };
-use crate::core::network;
-use crate::core::parser;
+use crate::core::{network, parser};
+use urlencoding::encode;
 
 /// 获取视频详情
 #[frb]
@@ -27,9 +27,12 @@ pub async fn get_video_detail(video_id: String) -> anyhow::Result<ApiVideoDetail
                 chinese_title: detail.chinese_title,
                 cover_url: detail.cover_url,
                 description: Some(detail.description).filter(|s| !s.is_empty()),
-                duration: None, // 从页面解析
+                duration: detail.duration,
                 views: Some(detail.views).filter(|s| !s.is_empty()),
-                likes: Some(detail.likes).filter(|s| !s.is_empty()),
+                like_percent: detail.like_percent,
+                dislike_percent: detail.like_percent.map(|p| 100u32.saturating_sub(p)),
+                likes_count: detail.likes_count,
+                dislikes_count: detail.dislikes_count,
                 upload_date: Some(detail.upload_date).filter(|s| !s.is_empty()),
                 author: detail.creator.map(|c| ApiAuthorInfo {
                     id: c.id,
@@ -96,25 +99,63 @@ pub async fn get_video_detail(video_id: String) -> anyhow::Result<ApiVideoDetail
 /// 获取视频评论
 #[frb]
 pub async fn get_video_comments(video_id: String, page: u32) -> anyhow::Result<ApiCommentList> {
-    // TODO: 实现实际的评论获取逻辑
+    let url = format!(
+        "{}/loadComment?type=video&id={}",
+        network::BASE_URL,
+        encode(&video_id)
+    );
+    tracing::info!("Getting video comments: {}", url);
+    let body = network::get(&url).await?;
+    let (_csrf_token, _current_user_id, comments) = parser::parse_video_comments(&body)?;
+
+    let mapped = comments
+        .into_iter()
+        .map(|c| ApiComment {
+            id: c.id,
+            user_name: c.user_name,
+            user_avatar: c.user_avatar,
+            content: c.content,
+            time: c.time,
+            likes: c.likes,
+            dislikes: 0,
+            replies: vec![],
+            has_more_replies: c.has_more_replies,
+        })
+        .collect::<Vec<_>>();
+
     Ok(ApiCommentList {
-        comments: vec![
-            ApiComment {
-                id: "c1".to_string(),
-                user_name: "用户1".to_string(),
-                user_avatar: Some("https://via.placeholder.com/50x50".to_string()),
-                content: "这是一条评论内容".to_string(),
-                time: "2小时前".to_string(),
-                likes: 10,
-                dislikes: 1,
-                replies: vec![],
-                has_more_replies: false,
-            },
-        ],
-        total: 50,
+        total: mapped.len() as u32,
+        comments: mapped,
         page,
-        has_next: page < 5,
+        has_next: false,
     })
+}
+
+/// 获取评论的回复
+#[frb]
+pub async fn get_comment_replies(comment_id: String) -> anyhow::Result<Vec<ApiComment>> {
+    let url = format!(
+        "{}/loadReplies?id={}",
+        network::BASE_URL,
+        encode(&comment_id)
+    );
+    tracing::info!("Getting comment replies: {}", url);
+    let body = network::get(&url).await?;
+    let replies = parser::parse_comment_replies(&body)?;
+    Ok(replies
+        .into_iter()
+        .map(|c| ApiComment {
+            id: c.id,
+            user_name: c.user_name,
+            user_avatar: c.user_avatar,
+            content: c.content,
+            time: c.time,
+            likes: c.likes,
+            dislikes: 0,
+            replies: vec![],
+            has_more_replies: false,
+        })
+        .collect())
 }
 
 /// 获取视频播放地址
@@ -148,10 +189,56 @@ pub async fn like_comment(comment_id: String) -> anyhow::Result<bool> {
 /// 发表评论
 #[frb]
 pub async fn post_comment(video_id: String, content: String, reply_to: Option<String>) -> anyhow::Result<ApiComment> {
-    // TODO: 实现实际的发表评论逻辑
+    if let Some(reply_id) = reply_to.filter(|s| !s.trim().is_empty()) {
+        let watch_url = format!("{}/watch?v={}", network::BASE_URL, video_id);
+        let html = network::get(&watch_url).await?;
+        let detail = parser::parse_video_detail(&html)?;
+        let Some(form_token) = detail.form_token else {
+            return Err(anyhow::anyhow!("Missing form token"));
+        };
+        let body = format!(
+            "_token={}&reply-comment-id={}&reply-comment-text={}",
+            encode(&form_token),
+            encode(&reply_id),
+            encode(&content)
+        );
+        let _ = network::post_with_x_csrf_token(&format!("{}/replyComment", network::BASE_URL), &body, &form_token).await?;
+        return Ok(ApiComment {
+            id: "reply".to_string(),
+            user_name: "你".to_string(),
+            user_avatar: None,
+            content,
+            time: "刚刚".to_string(),
+            likes: 0,
+            dislikes: 0,
+            replies: vec![],
+            has_more_replies: false,
+        });
+    }
+
+    // 发布主评论：需要当前用户 id 与 form token（来自 watch 页面）
+    let watch_url = format!("{}/watch?v={}", network::BASE_URL, video_id);
+    let html = network::get(&watch_url).await?;
+    let detail = parser::parse_video_detail(&html)?;
+    let Some(form_token) = detail.form_token else {
+        return Err(anyhow::anyhow!("Missing form token"));
+    };
+    let Some(current_user_id) = detail.current_user_id else {
+        return Err(anyhow::anyhow!("Not logged in"));
+    };
+
+    let body = format!(
+        "_token={}&comment-user-id={}&comment-type=video&comment-foreign-id={}&comment-text={}&comment-count=1&comment-is-political=0",
+        encode(&form_token),
+        encode(&current_user_id),
+        encode(&detail.id),
+        encode(&content),
+    );
+    let _ = network::post_with_x_csrf_token(&format!("{}/createComment", network::BASE_URL), &body, &form_token).await?;
+
     Ok(ApiComment {
-        id: "new_comment".to_string(),
-        user_name: "当前用户".to_string(),
+        id: "new".to_string(),
+        user_name: "你".to_string(),
         user_avatar: None,
         content,
         time: "刚刚".to_string(),

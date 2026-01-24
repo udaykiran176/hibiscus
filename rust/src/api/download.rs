@@ -430,6 +430,7 @@ async fn run_download(
 
     // 模拟播放：访问 watch 页获取链接 + 元数据
     let watch_url = format!("{}/watch?v={}", network::BASE_URL, video_id);
+    tracing::info!("download simulate_playback GET {}", watch_url);
     let html = network::get(&watch_url).await?;
     let detail = parser::parse_video_detail(&html)?;
 
@@ -466,6 +467,14 @@ async fn run_download(
         .ok_or_else(|| anyhow::anyhow!("No playable source"))?;
     let url = pick.url.clone();
     let format = pick.format.clone();
+    tracing::info!(
+        "download picked_source video_id={} quality_req={} quality_pick={} format={} url_len={}",
+        video_id,
+        quality,
+        pick.quality,
+        format,
+        url.len()
+    );
     let ext = if format.to_ascii_lowercase().contains("m3u8") || url.contains(".m3u8") {
         "m3u8"
     } else {
@@ -497,6 +506,7 @@ async fn run_download(
     let client = network::get_client();
     let mut req = client.get(&url);
     if downloaded > 0 {
+        tracing::info!("download resume_range video_id={} from_bytes={}", video_id, downloaded);
         req = req.header(reqwest::header::RANGE, format!("bytes={}-", downloaded));
     }
     let resp = req.send().await?;

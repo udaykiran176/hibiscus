@@ -32,7 +32,11 @@ pub struct ApiVideoDetail {
     pub description: Option<String>,
     pub duration: Option<String>,
     pub views: Option<String>,
-    pub likes: Option<String>,
+    /// 喜欢百分比（四舍五入到整数）
+    pub like_percent: Option<u32>,
+    pub dislike_percent: Option<u32>,
+    pub likes_count: Option<u32>,
+    pub dislikes_count: Option<u32>,
     pub upload_date: Option<String>,
     pub author: Option<ApiAuthorInfo>,
     pub tags: Vec<String>,

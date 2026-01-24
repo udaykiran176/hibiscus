@@ -86,6 +86,11 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   bool _hasOpened = false;
   Orientation _lastOrientation = Orientation.portrait;
 
+  final _comments = signal<List<ApiComment>>([]);
+  final _isCommentsLoading = signal(false);
+  final _commentsError = signal<String?>(null);
+  final _commentController = TextEditingController();
+
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<Duration>? _durSub;
   Timer? _historyTimer;
@@ -118,6 +123,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     _posSub?.cancel();
     _durSub?.cancel();
     _state.reset();
+    _commentController.dispose();
     _player.dispose();
     super.dispose();
   }
@@ -169,6 +175,57 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
 
     if (autoPlay) {
       await _playSelectedQuality(detail);
+    }
+    await _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    _isCommentsLoading.value = true;
+    _commentsError.value = null;
+    try {
+      final list = await video_api.getVideoComments(videoId: widget.videoId, page: 1);
+      _comments.value = list.comments;
+    } catch (e) {
+      _commentsError.value = e.toString();
+    } finally {
+      _isCommentsLoading.value = false;
+    }
+  }
+
+  Future<void> _loadReplies(ApiComment parent) async {
+    try {
+      final replies = await video_api.getCommentReplies(commentId: parent.id);
+      final list = [..._comments.value];
+      final idx = list.indexWhere((c) => c.id == parent.id);
+      if (idx >= 0) {
+        list[idx] = list[idx].copyWith(replies: replies, hasMoreReplies: false);
+        _comments.value = list;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载回复失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _submitComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    try {
+      await video_api.postComment(videoId: widget.videoId, content: text, replyTo: null);
+      _commentController.clear();
+      await _loadComments();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('评论已发送')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('发送失败：$e')),
+      );
     }
   }
 
@@ -326,6 +383,20 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (detail.duration != null || detail.likePercent != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    [
+                      if (detail.duration != null && detail.duration!.isNotEmpty)
+                        '时长 ${detail.duration}',
+                      if (detail.likePercent != null)
+                        '👍 ${detail.likePercent}% (${detail.likesCount ?? 0}/${(detail.likesCount ?? 0) + (detail.dislikesCount ?? 0)})',
+                    ].join(' · '),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
@@ -357,12 +428,197 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                   Text('相关视频', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   _buildRelatedVideos(context, detail.relatedVideos),
+                  const SizedBox(height: 24),
                 ],
+
+                Text('评论', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _buildComments(context, theme),
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildComments(BuildContext context, ThemeData theme) {
+    return Watch((context) {
+      final isLoading = _isCommentsLoading.value;
+      final error = _commentsError.value;
+      final comments = _comments.value;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (userState.isLoggedIn) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: '写下你的评论…',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: isLoading ? null : _submitComment,
+                  child: const Text('发送'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ] else ...[
+            OutlinedButton.icon(
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+                await userState.checkLoginStatus();
+              },
+              icon: const Icon(Icons.login),
+              label: const Text('登录后发表评论'),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (isLoading && comments.isEmpty)
+            const Center(child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()))
+          else if (error != null && comments.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('加载评论失败：$error', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: _loadComments,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('重试'),
+                ),
+              ],
+            )
+          else if (comments.isEmpty)
+            Text('暂无评论', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+          else ...[
+            ...comments.map((c) => _buildCommentItem(context, theme, c)),
+            if (isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        ],
+      );
+    });
+  }
+
+  Widget _buildCommentItem(BuildContext context, ThemeData theme, ApiComment c) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                backgroundImage: (c.userAvatar != null && c.userAvatar!.isNotEmpty)
+                    ? NetworkImage(c.userAvatar!)
+                    : null,
+                child: (c.userAvatar == null || c.userAvatar!.isEmpty)
+                    ? const Icon(Icons.person_outline, size: 18)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c.userName, style: theme.textTheme.titleSmall),
+                    Text(
+                      c.time,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (c.likes > 0)
+                Text(
+                  '👍 ${c.likes}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(c.content, style: theme.textTheme.bodyMedium),
+          if (c.replies.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...c.replies.map((r) => Padding(
+                  padding: const EdgeInsets.only(left: 36, top: 8),
+                  child: _buildReplyItem(context, theme, r),
+                )),
+          ],
+          if (c.hasMoreReplies) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: TextButton.icon(
+                onPressed: () => _loadReplies(c),
+                icon: const Icon(Icons.subdirectory_arrow_right),
+                label: const Text('加载回复'),
+              ),
+            ),
+          ],
+          const Divider(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplyItem(BuildContext context, ThemeData theme, ApiComment c) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          backgroundImage: (c.userAvatar != null && c.userAvatar!.isNotEmpty)
+              ? NetworkImage(c.userAvatar!)
+              : null,
+          child: (c.userAvatar == null || c.userAvatar!.isEmpty)
+              ? const Icon(Icons.person_outline, size: 16)
+              : null,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(c.userName, style: theme.textTheme.bodyMedium),
+              if (c.time.isNotEmpty)
+                Text(
+                  c.time,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              const SizedBox(height: 4),
+              Text(c.content, style: theme.textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
