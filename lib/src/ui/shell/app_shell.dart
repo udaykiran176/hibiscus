@@ -12,6 +12,7 @@ import 'package:hibiscus/src/ui/pages/downloads_page.dart';
 import 'package:hibiscus/src/ui/pages/subscriptions_page.dart';
 import 'package:hibiscus/src/ui/pages/settings_page.dart';
 import 'package:hibiscus/src/state/nav_state.dart';
+import 'package:signals/signals_flutter.dart';
 
 /// 导航项配置
 class _NavDestination {
@@ -73,13 +74,12 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late final PageController _pageController;
-  late int _pageIndex;
 
   @override
   void initState() {
     super.initState();
-    _pageIndex = appNavState.selectedIndex.value;
-    _pageController = PageController(initialPage: _pageIndex);
+    final initialIndex = appNavState.selectedIndex.value;
+    _pageController = PageController(initialPage: initialIndex);
   }
 
   @override
@@ -99,36 +99,52 @@ class _AppShellState extends State<AppShell> {
   }
   
   void _onDestinationSelected(int index, List<_NavDestination> destinations) {
-    setState(() => _pageIndex = index);
     appNavState.setIndex(index);
     _pageController.jumpToPage(index);
   }
   
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Breakpoints.isDesktop(context);
-    final isTablet = Breakpoints.isTablet(context);
-    final location = _destinations[_pageIndex].route;
-    
-    // 桌面端：常驻侧栏 (NavigationDrawer 样式)
-    if (isDesktop) {
-      return _buildDesktopLayout(location);
-    }
-    
-    // 平板：NavigationRail
-    if (isTablet) {
-      return _buildTabletLayout(location);
-    }
-    
-    // 手机：底部导航栏
-    return _buildMobileLayout(location);
+    // 使用 Watch 监听 appNavState 的变化，确保点击导航项时 UI 自动更新
+    return Watch((context) {
+      // 始终使用 appNavState 中的当前索引，确保布局切换时保持正确的页面
+      final currentIndex = appNavState.selectedIndex.value;
+      
+      // 确保 PageController 与当前索引同步（布局切换时）
+      if (_pageController.hasClients) {
+        final currentPage = _pageController.page?.round();
+        if (currentPage != null && currentPage != currentIndex) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_pageController.hasClients) {
+              _pageController.jumpToPage(currentIndex);
+            }
+          });
+        }
+      }
+      
+      final isDesktop = Breakpoints.isDesktop(context);
+      final isTablet = Breakpoints.isTablet(context);
+      
+      // 桌面端：常驻侧栏 (NavigationDrawer 样式)
+      if (isDesktop) {
+        //return _buildDesktopLayout(currentIndex);
+        return _buildTabletLayout(currentIndex);
+      }
+      
+      // 平板：NavigationRail
+      if (isTablet) {
+        return _buildTabletLayout(currentIndex);
+      }
+      
+      // 手机：底部导航栏
+      return _buildMobileLayout(currentIndex);
+    });
   }
   
   /// 桌面端布局：常驻宽侧栏
-  Widget _buildDesktopLayout(String location) {
+  Widget _buildDesktopLayout(int selectedIndex) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final selectedIndex = _getSelectedIndex(location, _destinations);
     
     return Row(
       children: [
@@ -227,12 +243,12 @@ class _AppShellState extends State<AppShell> {
   }
   
   /// 平板布局：NavigationRail
-  Widget _buildTabletLayout(String location) {
+  Widget _buildTabletLayout(int selectedIndex) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final selectedIndex = _getSelectedIndex(location, _destinations);
     
     return Row(
+      key: Key("MAIN_ROW"),
       children: [
         NavigationRail(
           selectedIndex: selectedIndex,
@@ -255,33 +271,43 @@ class _AppShellState extends State<AppShell> {
           }).toList(),
         ),
         const VerticalDivider(width: 1, thickness: 1),
-        Expanded(child: _buildPageView()),
+        Expanded(child: Scaffold(
+          key: Key("MAIN_SCAFFOLD"),
+            body: _buildPageView(),
+        ),),
       ],
     );
   }
   
   /// 手机布局：底部导航栏
-  Widget _buildMobileLayout(String location) {
-    final selectedIndex = _getSelectedIndex(location, _destinations);
+  Widget _buildMobileLayout(int selectedIndex) {
     
-    return Scaffold(
-      body: _buildPageView(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
-        destinations: _destinations.map((dest) {
-          return NavigationDestination(
-            icon: Icon(dest.icon),
-            selectedIcon: Icon(dest.selectedIcon),
-            label: dest.label,
-          );
-        }).toList(),
-      ),
+    return Row(
+      key: Key("MAIN_ROW"),
+        children: [
+          Expanded(child:
+          Scaffold(
+            key: Key("MAIN_SCAFFOLD"),
+            body: _buildPageView(),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
+              destinations: _destinations.map((dest) {
+                return NavigationDestination(
+                  icon: Icon(dest.icon),
+                  selectedIcon: Icon(dest.selectedIcon),
+                  label: dest.label,
+                );
+              }).toList(),
+            ),
+        ),),
+      ],
     );
   }
 
   Widget _buildPageView() {
     return PageView(
+      key: Key("MAIN_PAGEVIEW"),
       controller: _pageController,
       physics: const NeverScrollableScrollPhysics(),
       children: const [
