@@ -254,14 +254,6 @@ class _AppShellState extends State<AppShell> {
           selectedIndex: selectedIndex,
           onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
           labelType: NavigationRailLabelType.all,
-          leading: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Icon(
-              Icons.local_florist,
-              size: 32,
-              color: colorScheme.primary,
-            ),
-          ),
           destinations: _destinations.map((dest) {
             return NavigationRailDestination(
               icon: Icon(dest.icon),

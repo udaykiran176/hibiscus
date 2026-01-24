@@ -1,0 +1,287 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.38.4'
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      build-number: ${{ steps.get-version.outputs.build-number }}
+      tag: ${{ steps.get-version.outputs.tag }}
+      tag_exists: ${{ steps.check-tag.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: get-version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | sed 's/+.*$//')
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "build-number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git rev-parse "refs/tags/${{ steps.get-version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  create-release:
+    needs: check-version
+    if: ${{ needs.check-version.outputs.tag_exists == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          name: Release ${{ needs.check-version.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check-assets:
+    needs: [create-release, check-version]
+    runs-on: ubuntu-latest
+    outputs:
+      android-apk-exists: ${{ steps.check-assets.outputs.android-apk }}
+      windows-x64-exists: ${{ steps.check-assets.outputs.windows-x64 }}
+      macos-exists: ${{ steps.check-assets.outputs.macos }}
+      ios-exists: ${{ steps.check-assets.outputs.ios }}
+    steps:
+      - name: Check Release Assets
+        id: check-assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: '${{ needs.check-version.outputs.tag }}'
+            });
+            
+            const version = '${{ needs.check-version.outputs.version }}';
+            const assets = release.assets.map(asset => asset.name);
+            const expectedAssets = {
+              'android-apk': `hibiscus-${version}-android.apk`,
+              'windows-x64': `hibiscus-${version}-windows-x64.zip`,
+              'macos': `hibiscus-${version}-macos.dmg`,
+              'ios': `hibiscus-${version}-ios.ipa`
+            };
+            
+            const results = {};
+            for (const [key, filename] of Object.entries(expectedAssets)) {
+              results[key] = assets.includes(filename) ? 'true' : 'false';
+            }
+            
+            core.setOutput('android-apk', results['android-apk']);
+            core.setOutput('windows-x64', results['windows-x64']);
+            core.setOutput('macos', results['macos']);
+            core.setOutput('ios', results['ios']);
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: [check-version, check-assets]
+    if: ${{ needs.check-assets.outputs.android-apk-exists == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Accept Android licenses
+        run: |
+          yes | flutter doctor --android-licenses || true
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          flutter build apk --release \
+            --build-name=${{ needs.check-version.outputs.version }} \
+            --build-number=${{ needs.check-version.outputs.build-number }}
+          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          echo $KEY_PASSWORD | $ANDROID_HOME/build-tools/34.0.0/apksigner sign --ks keystore.jks build/app/outputs/flutter-apk/app-release.apk
+          mv build/app/outputs/flutter-apk/app-release.apk hibiscus-${{ needs.check-version.outputs.version }}-android.apk
+      
+      - name: Upload Android to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          files: |
+            hibiscus-${{ needs.check-version.outputs.version }}-android.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: [check-version, check-assets]
+    if: ${{ needs.check-assets.outputs.windows-x64-exists == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Windows
+        run: |
+          flutter build windows --release `
+            --build-name=${{ needs.check-version.outputs.version }} `
+            --build-number=${{ needs.check-version.outputs.build-number }}
+      
+      - name: Create archive
+        run: |
+          $VERSION = "${{ needs.check-version.outputs.version }}"
+          $ZIP_NAME = "hibiscus-${VERSION}-windows-x64.zip"
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath $ZIP_NAME -Force
+      
+      - name: Upload Windows to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          files: |
+            hibiscus-${{ needs.check-version.outputs.version }}-windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    name: Build macOS
+    needs: [check-version, check-assets]
+    if: ${{ needs.check-assets.outputs.macos-exists == 'false' }}
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build macOS
+        run: |
+          flutter build macos --release \
+            --build-name=${{ needs.check-version.outputs.version }} \
+            --build-number=${{ needs.check-version.outputs.build-number }}
+      
+      - name: Create DMG
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          DMG_NAME="hibiscus-${VERSION}-macos.dmg"
+          
+          mkdir -p macos_bundle
+          ln -sf /Applications macos_bundle/
+          mv build/macos/Build/Products/Release/hibiscus.app macos_bundle/
+          hdiutil create -volname hibiscus -srcfolder macos_bundle -ov -format UDBZ "$DMG_NAME"
+          rm -rf macos_bundle
+      
+      - name: Upload macOS to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          files: |
+            hibiscus-${{ needs.check-version.outputs.version }}-macos.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: [check-version, check-assets]
+    if: ${{ needs.check-assets.outputs.ios-exists == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build iOS
+        run: |
+          flutter build ipa --release \
+            --no-codesign \
+            --build-name=${{ needs.check-version.outputs.version }} \
+            --build-number=${{ needs.check-version.outputs.build-number }}
+      
+      - name: Package IPA from xcarchive
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          IPA_NAME="hibiscus-${VERSION}-ios.ipa"
+          
+          mkdir -p Payload
+          
+          APP_NAME=$(ls build/ios/archive/Runner.xcarchive/Products/Applications/ | grep .app)
+          cp -r "build/ios/archive/Runner.xcarchive/Products/Applications/$APP_NAME" Payload/
+          
+          zip -r "$IPA_NAME" Payload
+          
+          rm -rf Payload
+          
+          echo "IPA file created: $IPA_NAME"
+          ls -lh "$IPA_NAME"
+      
+      - name: Upload iOS to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          files: |
+            hibiscus-${{ needs.check-version.outputs.version }}-ios.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
