@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/state/search_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
-import 'package:hibiscus/src/ui/widgets/video_grid.dart';
 import 'package:hibiscus/src/ui/widgets/filter_bar.dart';
+import 'package:hibiscus/src/ui/widgets/video_pager.dart';
 import 'package:hibiscus/src/rust/api/download.dart' as download_api;
+import 'package:hibiscus/src/ui/widgets/video_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,7 +19,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   bool get wantKeepAlive => true;
@@ -26,7 +26,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     // 加载首页数据
     _loadInitialData();
   }
@@ -35,37 +34,16 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     await searchState.init();
     await searchState.loadFilterOptions();
     _searchController.text = searchState.filters.value?.query ?? '';
-    if (searchState.videos.value.isEmpty) {
-      searchState.loadHomeVideos(refresh: true);
-    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    // 滚动到底部时加载更多
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      searchState.loadMore();
-    }
   }
 
   void _onSearch(String query) {
     searchState.updateQuery(query);
-  }
-
-  Future<void> _onRefresh() async {
-    final query = searchState.filters.value?.query;
-    if (query != null && query.isNotEmpty) {
-      await searchState.search(refresh: true);
-    } else {
-      await searchState.loadHomeVideos(refresh: true);
-    }
   }
 
   @override
@@ -74,6 +52,8 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     return Watch((context) {
       final isMultiSelect = searchState.isMultiSelectMode.value;
       final selectedCount = searchState.selectedVideoIds.value.length;
+      final pagerKey = searchState.filtersKey;
+      final needsCloudflare = searchState.needsCloudflare.value;
 
       return Scaffold(
         appBar: AppBar(
@@ -97,36 +77,31 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
 
             // 视频列表
             Expanded(
-              child: Watch((context) {
-                final videos = searchState.videos.value;
-                final isLoading = searchState.isLoading.value;
-                final hasMore = searchState.hasMore.value;
-                final error = searchState.error.value;
-                final needsCloudflare = searchState.needsCloudflare.value;
-
-                // 显示 Cloudflare 验证提示
-                if (needsCloudflare) {
-                  return _buildCloudflarePrompt(context);
-                }
-
-                // 显示错误
-                if (error != null && videos.isEmpty) {
-                  return _buildErrorState(context, error);
-                }
-
-                return RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  child: VideoGrid(
-                    controller: _scrollController,
-                    videos: videos,
-                    isLoading: isLoading,
-                    hasMore: hasMore,
-                    selectionMode: isMultiSelect,
-                    selectedIds: searchState.selectedVideoIds.value,
-                    onToggleSelect: (video) => searchState.toggleSelected(video.id),
-                  ),
-                );
-              }),
+              child: needsCloudflare
+                  ? _buildCloudflarePrompt(context)
+                  : VideoPager(
+                      key: ValueKey(pagerKey),
+                      pageLoader: (page) async {
+                        final result = await searchState.fetchPage(page: page);
+                        return VideoPagerPage(
+                          videos: result.videos,
+                          hasNext: result.hasNext,
+                        );
+                      },
+                      onItemsChanged: (items) => searchState.videos.value = items,
+                      selectionMode: isMultiSelect,
+                      selectedIds: searchState.selectedVideoIds.value,
+                      onToggleSelect: (video) => searchState.toggleSelected(video.id),
+                      itemBuilder: (context, video, sizeScale, selected, onTap) {
+                        return VideoCard(
+                          video: video,
+                          sizeScale: sizeScale,
+                          selectionMode: isMultiSelect,
+                          selected: selected,
+                          onTap: onTap,
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -146,7 +121,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                 onPressed: () {
                   _searchController.clear();
                   searchState.reset();
-                  searchState.loadHomeVideos(refresh: true);
                   setState(() {});
                 },
               )
@@ -160,6 +134,8 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       onChanged: (value) => setState(() {}),
     );
   }
+
+  // VideoPager 已处理错误态与重试按钮
 
   Future<void> _batchDownloadSelected() async {
     final ids = searchState.selectedVideoIds.value.toList();
@@ -235,45 +211,6 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       SnackBar(content: Text('已加入下载：$ok/$total')),
     );
     searchState.exitMultiSelect();
-  }
-
-  Widget _buildErrorState(BuildContext context, String error) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '加载失败',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildCloudflarePrompt(BuildContext context) {

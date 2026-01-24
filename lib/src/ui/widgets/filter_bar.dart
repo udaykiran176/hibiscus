@@ -189,7 +189,8 @@ class _FilterBarState extends State<FilterBar> {
       tags: tags.toList(),
       broadMatch: broadMatch,
     );
-    searchState.search(refresh: true);
+    searchState.needsCloudflare.value = false;
+    searchState.videos.value = [];
   }
 
   @override

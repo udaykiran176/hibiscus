@@ -6,9 +6,11 @@ import 'package:hibiscus/src/state/subscriptions_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
-import 'package:hibiscus/src/ui/widgets/video_grid.dart';
+import 'package:hibiscus/src/ui/widgets/video_card.dart';
+import 'package:hibiscus/src/ui/widgets/video_pager.dart';
 import 'package:hibiscus/src/rust/api/models.dart';
 import 'package:hibiscus/src/rust/api/download.dart' as download_api;
+import 'package:hibiscus/src/rust/api/user.dart' as user_api;
 
 class SubscriptionsPage extends StatefulWidget {
   const SubscriptionsPage({super.key});
@@ -18,7 +20,6 @@ class SubscriptionsPage extends StatefulWidget {
 }
 
 class _SubscriptionsPageState extends State<SubscriptionsPage> {
-  final _scrollController = ScrollController();
   final _isMultiSelect = signal(false);
   final _selectedIds = signal<Set<String>>(<String>{});
   final _selectedQuality = signal('1080P');
@@ -27,20 +28,12 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   void initState() {
     super.initState();
     if (userState.loginStatus.value == LoginStatus.unknown) {
-      userState.checkLoginStatus().then((_) {
-        if (mounted && userState.isLoggedIn) {
-          subscriptionsState.load(refresh: true);
-        }
-      });
-    } else if (userState.isLoggedIn) {
-      subscriptionsState.load(refresh: true);
+      userState.checkLoginStatus();
     }
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
     subscriptionsState.reset();
     super.dispose();
   }
@@ -146,13 +139,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     _exitMultiSelect();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      subscriptionsState.loadMore();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -187,48 +173,52 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         }
 
         final authors = subscriptionsState.authors.value;
-        final videos = subscriptionsState.videos.value;
-        final isLoading = subscriptionsState.isLoading.value;
-        final error = subscriptionsState.error.value;
-        final hasMore = subscriptionsState.hasMore.value;
-
-        if (isLoading && videos.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (error != null && videos.isEmpty) {
-          return _buildErrorState(context, error);
-        }
 
         final isMultiSelect = _isMultiSelect.value;
         final selectedCount = _selectedIds.value.length;
         final quality = _selectedQuality.value;
 
-        return RefreshIndicator(
-          onRefresh: () => subscriptionsState.load(refresh: true),
-          child: Column(
-            children: [
-              if (authors.isNotEmpty) _buildAuthorsStrip(context, authors),
-              if (isMultiSelect)
-                _buildMultiSelectBar(
-                  context,
-                  theme,
-                  selectedCount: selectedCount,
-                  quality: quality,
-                ),
-              Expanded(
-                child: VideoGrid(
-                  controller: _scrollController,
-                  videos: videos,
-                  isLoading: isLoading,
-                  hasMore: hasMore,
-                  selectionMode: isMultiSelect,
-                  selectedIds: _selectedIds.value,
-                  onToggleSelect: (video) => _toggleSelected(video.id),
-                ),
+        final userId = userState.userInfo.value?.id ?? '';
+
+        return Column(
+          children: [
+            if (authors.isNotEmpty) _buildAuthorsStrip(context, authors),
+            if (isMultiSelect)
+              _buildMultiSelectBar(
+                context,
+                theme,
+                selectedCount: selectedCount,
+                quality: quality,
               ),
-            ],
-          ),
+            Expanded(
+              child: VideoPager(
+                key: ValueKey('subscriptions:$userId'),
+                pageLoader: (page) async {
+                  final result = await user_api.getMySubscriptions(page: page);
+                  if (page == 1) {
+                    subscriptionsState.authors.value = result.authors;
+                  }
+                  return VideoPagerPage(
+                    videos: result.videos,
+                    hasNext: result.hasNext,
+                  );
+                },
+                onItemsChanged: (items) => subscriptionsState.videos.value = items,
+                selectionMode: isMultiSelect,
+                selectedIds: _selectedIds.value,
+                onToggleSelect: (video) => _toggleSelected(video.id),
+                itemBuilder: (context, video, sizeScale, selected, onTap) {
+                  return VideoCard(
+                    video: video,
+                    sizeScale: sizeScale,
+                    selectionMode: isMultiSelect,
+                    selected: selected,
+                    onTap: onTap,
+                  );
+                },
+              ),
+            ),
+          ],
         );
       }),
     );
@@ -401,9 +391,6 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         MaterialPageRoute(builder: (_) => const LoginPage()),
                       );
                       await userState.checkLoginStatus();
-                      if (mounted && userState.isLoggedIn) {
-                        await subscriptionsState.load(refresh: true);
-                      }
                     },
               icon: const Icon(Icons.login),
               label: const Text('去登录'),
@@ -414,34 +401,5 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     );
   }
 
-  Widget _buildErrorState(BuildContext context, String error) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text('加载失败', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => subscriptionsState.load(refresh: true),
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // VideoPager 已处理错误态与重试按钮
 }

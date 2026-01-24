@@ -21,14 +21,6 @@ class SearchState {
   // 视频列表
   final videos = signal<List<ApiVideoCard>>([]);
 
-  // 加载状态
-  final isLoading = signal(false);
-  final isLoadingMore = signal(false);
-  final hasMore = signal(true);
-
-  // 错误信息
-  final error = signal<String?>(null);
-
   // 需要 Cloudflare 验证
   final needsCloudflare = signal(false);
 
@@ -36,9 +28,6 @@ class SearchState {
   final isMultiSelectMode = signal(false);
   final selectedVideoIds = signal<Set<String>>(<String>{});
   final multiSelectQuality = signal<String>('1080P');
-
-  // 当前页码
-  int _currentPage = 1;
 
   void enterMultiSelect({String? defaultQuality}) {
     isMultiSelectMode.value = true;
@@ -111,107 +100,30 @@ class SearchState {
   }
 
   /// 执行搜索
-  Future<void> search({bool refresh = false}) async {
-    if (isLoading.value && !refresh) return;
-
-    // 确保已初始化
+  Future<ApiSearchResult> fetchPage({required int page}) async {
     await init();
-
-    if (refresh) {
-      _currentPage = 1;
-      hasMore.value = true;
-      needsCloudflare.value = false;
-    }
-
-    isLoading.value = true;
-    error.value = null;
+    needsCloudflare.value = false;
 
     try {
-      final currentFilters = filters.value!.copyWith(page: _currentPage);
-      final result = await search_api.search(filters: currentFilters);
-
-      if (refresh) {
-        videos.value = result.videos;
-      } else {
-        videos.value = [...videos.value, ...result.videos];
+      final current = filters.value!.copyWith(page: page);
+      if (_shouldUseSearch(current)) {
+        return await search_api.search(filters: current);
       }
-
-      hasMore.value = result.hasNext;
+      return await search_api.getHomeVideos(page: page);
     } catch (e) {
       final errorStr = e.toString();
       if (errorStr.contains('CLOUDFLARE_CHALLENGE')) {
         needsCloudflare.value = true;
-        error.value = '需要完成 Cloudflare 验证';
-      } else {
-        error.value = errorStr;
       }
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// 获取首页视频
-  Future<void> loadHomeVideos({bool refresh = false}) async {
-    if (isLoading.value && !refresh) return;
-
-    if (refresh) {
-      _currentPage = 1;
-      hasMore.value = true;
-      needsCloudflare.value = false;
-    }
-
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      debugPrint('Loading home videos, page: $_currentPage');
-      final result = await search_api.getHomeVideos(page: _currentPage);
-      debugPrint('Got ${result.videos.length} videos');
-
-      if (refresh) {
-        videos.value = result.videos;
-      } else {
-        videos.value = [...videos.value, ...result.videos];
-      }
-
-      hasMore.value = result.hasNext;
-    } catch (e) {
-      debugPrint('Load home videos error: $e');
-      final errorStr = e.toString();
-      if (errorStr.contains('CLOUDFLARE_CHALLENGE')) {
-        needsCloudflare.value = true;
-        error.value = '需要完成 Cloudflare 验证';
-      } else {
-        error.value = errorStr;
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// 加载更多
-  Future<void> loadMore() async {
-    if (isLoadingMore.value || !hasMore.value || isLoading.value) return;
-
-    isLoadingMore.value = true;
-    _currentPage++;
-
-    try {
-      // 根据当前是否有搜索条件决定调用哪个 API
-      if (filters.value?.query != null && filters.value!.query!.isNotEmpty) {
-        await search();
-      } else {
-        await loadHomeVideos();
-      }
-    } finally {
-      isLoadingMore.value = false;
+      rethrow;
     }
   }
 
   /// 更新过滤条件并重新搜索
   void updateFilters(ApiSearchFilters newFilters) {
     filters.value = newFilters;
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新搜索关键词
@@ -220,21 +132,24 @@ class SearchState {
     filters.value = filters.value!.copyWith(
       query: query.isEmpty ? null : query,
     );
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新类型
   void updateGenre(String? genre) {
     if (filters.value == null) return;
     filters.value = filters.value!.copyWith(genre: genre);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新标签
   void updateTags(List<String> tags) {
     if (filters.value == null) return;
     filters.value = filters.value!.copyWith(tags: tags);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 切换标签
@@ -247,28 +162,32 @@ class SearchState {
       currentTags.add(tag);
     }
     filters.value = filters.value!.copyWith(tags: currentTags);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新排序
   void updateSort(String? sort) {
     if (filters.value == null) return;
     filters.value = filters.value!.copyWith(sort: sort);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新年份
   void updateYear(String? year) {
     if (filters.value == null) return;
     filters.value = filters.value!.copyWith(year: year);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 更新时长
   void updateDuration(String? duration) {
     if (filters.value == null) return;
     filters.value = filters.value!.copyWith(duration: duration);
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 切换宽松匹配
@@ -277,7 +196,8 @@ class SearchState {
     filters.value = filters.value!.copyWith(
       broadMatch: !filters.value!.broadMatch,
     );
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 清除过滤条件（保留搜索词）
@@ -295,7 +215,8 @@ class SearchState {
       duration: null,
       page: 1,
     );
-    search(refresh: true);
+    needsCloudflare.value = false;
+    videos.value = [];
   }
 
   /// 完全重置
@@ -313,21 +234,46 @@ class SearchState {
       page: 1,
     );
     videos.value = [];
-    error.value = null;
-    hasMore.value = true;
     needsCloudflare.value = false;
-    _currentPage = 1;
   }
 
   /// 是否有激活的过滤条件
   bool get hasActiveFilters {
     final f = filters.value;
     if (f == null) return false;
-    return f.genre != null ||
-        f.tags.isNotEmpty ||
-        f.sort != null ||
-        f.year != null ||
-        f.duration != null;
+    return _shouldUseSearch(f);
+  }
+
+  /// 用于重置/复用列表状态的 key（包含全部搜索条件）
+  String get filtersKey {
+    final f = filters.value;
+    if (f == null) return 'filters:null';
+    final tags = [...f.tags]..sort();
+    return [
+      'q=${f.query ?? ''}',
+      'genre=${f.genre ?? ''}',
+      'tags=${tags.join(',')}',
+      'broad=${f.broadMatch ? '1' : '0'}',
+      'sort=${f.sort ?? ''}',
+      'year=${f.year ?? ''}',
+      'month=${f.month ?? ''}',
+      'date=${f.date ?? ''}',
+      'duration=${f.duration ?? ''}',
+    ].join('|');
+  }
+
+  bool _shouldUseSearch(ApiSearchFilters? f) {
+    if (f == null) return false;
+    if (f.query != null && f.query!.isNotEmpty) return true;
+    if (f.genre != null && f.genre!.isNotEmpty) return true;
+    if (f.tags.isNotEmpty) return true;
+    if (f.broadMatch) return true;
+    if (f.sort != null && f.sort!.isNotEmpty) return true;
+    if (f.year != null && f.year!.isNotEmpty) return true;
+    if (f.month != null && f.month!.isNotEmpty) return true;
+    if (f.date != null && f.date!.isNotEmpty) return true;
+    if (f.duration != null && f.duration!.isNotEmpty) return true;
+    return false;
   }
 }
 
