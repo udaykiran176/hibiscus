@@ -86,11 +86,14 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
               children: [
                 Container(
                   color: Colors.black,
-                  child: Video(
-                    controller: _controller,
-                    onEnterFullscreen: _enterFullscreen,
-                    onExitFullscreen: _exitFullscreen,
-                  ),
+                child: Video(
+                  controller: _controller,
+                  onEnterFullscreen: _enterFullscreen,
+                  onExitFullscreen: _exitFullscreen,
+                  pauseUponEnteringBackgroundMode:
+                      Platform.isIOS ? false : true,
+                  resumeUponEnteringForegroundMode: Platform.isIOS,
+                ),
                 ),
                 if (!_hasOpened)
                   Positioned.fill(

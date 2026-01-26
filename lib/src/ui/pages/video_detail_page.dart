@@ -631,11 +631,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           // 视频区域
           Container(
             color: Colors.black,
-            child: Video(
-              controller: _controller,
-              onEnterFullscreen: _enterFullscreen,
-              onExitFullscreen: _exitFullscreen,
-            ),
+      child: Video(
+        controller: _controller,
+        onEnterFullscreen: _enterFullscreen,
+        onExitFullscreen: _exitFullscreen,
+        pauseUponEnteringBackgroundMode: Platform.isIOS ? false : true,
+        resumeUponEnteringForegroundMode: Platform.isIOS,
+      ),
           ),
           // 封面占位
           StreamBuilder<bool>(
