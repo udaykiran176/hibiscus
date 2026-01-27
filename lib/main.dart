@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:hibiscus/src/rust/frb_generated.dart';
@@ -8,20 +10,28 @@ import 'package:path_provider/path_provider.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:signals/signals_flutter.dart';
+import 'package:hibiscus/src/services/app_logger.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // 初始化 Rust 库
-  await RustLib.init();
-  final appSupportDir = await getApplicationSupportDirectory();
-  await init_api.initApp(dataPath: appSupportDir.path);
-  await userState.checkLoginStatus();
-  await settingsState.init();
-  
-  MediaKit.ensureInitialized();
-  
-  runApp(const HibiscusApp());
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      // 初始化 Rust 库
+      await RustLib.init();
+      final appSupportDir = await getApplicationSupportDirectory();
+      debugPrint('App Support Directory: ${appSupportDir.path}');
+      await init_api.initApp(dataPath: appSupportDir.path);
+      AppLogger.installGlobalHandlers();
+      await userState.checkLoginStatus();
+      await settingsState.init();
+
+      MediaKit.ensureInitialized();
+
+      runApp(const HibiscusApp());
+    },
+    (error, stack) => AppLogger.error('zone', error.toString(), stack: stack),
+  );
 }
 
 class HibiscusApp extends StatelessWidget {

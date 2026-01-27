@@ -6,7 +6,9 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `load_saved_cookies`
+// These functions are ignored because they are not marked as `pub`: `cleanup_export_zips_internal`, `cleanup_logs_internal`, `force_rotate`, `init_logging`, `list_sealed_log_files`, `load_saved_cookies`, `new`, `open_new_log_file`, `rotate_locked`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `LockedWriter`, `RotatingMakeWriter`, `RotatingState`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `flush`, `make_writer`, `write`
 
 /// 初始化应用（在 Flutter 启动时调用）
 Future<void> initApp({required String dataPath}) =>
@@ -22,6 +24,54 @@ Future<bool> checkCloudflare() =>
 
 /// 清除所有 Cookies（登出时调用）
 Future<void> clearCookies() => RustLib.instance.api.crateApiInitClearCookies();
+
+/// Flutter 侧遇到错误时调用，把错误信息写入 Rust 日志
+Future<void> reportFlutterError({required String message, String? stack}) =>
+    RustLib.instance.api.crateApiInitReportFlutterError(
+      message: message,
+      stack: stack,
+    );
+
+/// Flutter 侧日志（不限 error 级别）
+///
+/// `level` 支持：`trace|debug|info|warn|error`（大小写不敏感），其他值默认按 `info` 处理。
+Future<void> reportFlutterLog({
+  required String level,
+  required String message,
+  String? tag,
+  String? stack,
+}) => RustLib.instance.api.crateApiInitReportFlutterLog(
+  level: level,
+  message: message,
+  tag: tag,
+  stack: stack,
+);
+
+/// 为“分享日志”做准备：强制切换到新日志文件，并返回“已封存”的日志文件路径列表（不会再被追加）。
+///
+/// Flutter 侧应先调用该接口，再读取/打包返回的文件，从而避免分享过程中日志继续追加到同一批文件里。
+Future<List<String>> prepareLogsForSharing() =>
+    RustLib.instance.api.crateApiInitPrepareLogsForSharing();
+
+/// Rust 侧创建日志 zip（Flutter 仅负责分享这个 zip）
+///
+/// - 文件放在 `{data_dir}/tmp/hibiscus_logs_*.zip`
+/// - 会先轮转一次，保证打包的文件不会再被追加
+Future<String> exportLogsZip() =>
+    RustLib.instance.api.crateApiInitExportLogsZip();
+
+/// 清理日志文件（按总大小/数量/时间）
+Future<void> cleanupLogs({
+  required String dataPath,
+  BigInt? maxTotalBytes,
+  int? maxFiles,
+  PlatformInt64? maxAgeDays,
+}) => RustLib.instance.api.crateApiInitCleanupLogs(
+  dataPath: dataPath,
+  maxTotalBytes: maxTotalBytes,
+  maxFiles: maxFiles,
+  maxAgeDays: maxAgeDays,
+);
 
 /// 获取应用版本
 Future<String> getVersion() => RustLib.instance.api.crateApiInitGetVersion();

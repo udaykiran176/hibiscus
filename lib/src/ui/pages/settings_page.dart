@@ -9,6 +9,7 @@ import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
 import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
+import 'package:hibiscus/src/services/log_export_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -130,6 +131,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.open_in_new),
                 onTap: () => _openDataDir(context),
               ),
+
+            const Divider(),
+
+            _SectionHeader(title: '诊断'),
+            ListTile(
+              title: const Text('导出日志'),
+              subtitle: const Text('打包日志用于反馈问题'),
+              trailing: const Icon(Icons.share_outlined),
+              onTap: () => _shareLogs(context),
+            ),
           
             const Divider(),
             
@@ -251,6 +262,33 @@ class _SettingsPageState extends State<SettingsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('打开失败: $e')),
       );
+    }
+  }
+
+  Future<void> _shareLogs(BuildContext context) async {
+    final rootContext = context;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        title: Text('正在打包日志…'),
+        content: SizedBox(
+          height: 56,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+
+    try {
+      await LogExportService.shareLogs(rootContext);
+    } catch (e) {
+      debugPrint('Log export failed: $e');
+      if (!rootContext.mounted) return;
+      ScaffoldMessenger.of(rootContext).showSnackBar(
+        SnackBar(content: Text('导出失败: $e')),
+      );
+    } finally {
+      if (rootContext.mounted) Navigator.of(rootContext).pop();
     }
   }
 
