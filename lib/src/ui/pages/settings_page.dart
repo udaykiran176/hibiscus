@@ -8,6 +8,7 @@ import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
 import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
+import 'package:hibiscus/src/services/image_cache_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -17,11 +18,33 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  CacheSizeInfo? _cacheSizeInfo;
+  bool _loadingCacheSize = true;
+
   @override
   void initState() {
     super.initState();
     if (userState.loginStatus.value == LoginStatus.unknown) {
       userState.checkLoginStatus();
+    }
+    _loadCacheSize();
+  }
+
+  Future<void> _loadCacheSize() async {
+    try {
+      final info = await ImageCacheService.getCacheSize();
+      if (mounted) {
+        setState(() {
+          _cacheSizeInfo = info;
+          _loadingCacheSize = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingCacheSize = false;
+        });
+      }
     }
   }
 
@@ -90,7 +113,13 @@ class _SettingsPageState extends State<SettingsPage> {
             _SectionHeader(title: '存储'),
             ListTile(
               title: const Text('清除缓存'),
-              subtitle: const Text('目前仅包含离线封面缓存'),
+              subtitle: Text(_loadingCacheSize
+                  ? '正在计算缓存大小...'
+                  : _cacheSizeInfo != null
+                      ? '图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)\n'
+                        'Web缓存: ${_cacheSizeInfo!.webCacheCount} 条'
+                      : '点击清除所有缓存'),
+              isThreeLine: !_loadingCacheSize && _cacheSizeInfo != null,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showClearCacheDialog(context),
             ),
@@ -163,23 +192,46 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('清除缓存'),
-        content: const Text('确定要清除离线封面缓存吗？'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('选择要清除的缓存类型：'),
+            const SizedBox(height: 16),
+            if (_cacheSizeInfo != null) ...[
+              Text('图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)'),
+              Text('Web缓存: ${_cacheSizeInfo!.webCacheCount} 条'),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ImageCacheService.clearImageCache();
+              await _loadCacheSize();
+              if (!rootContext.mounted) return;
+              ScaffoldMessenger.of(rootContext).showSnackBar(
+                const SnackBar(content: Text('图片缓存已清除')),
+              );
+            },
+            child: const Text('仅图片'),
+          ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              await settings_api.clearCoverCache();
-              if (!mounted) return;
+              await ImageCacheService.clearAllCache();
+              await _loadCacheSize();
               if (!rootContext.mounted) return;
               ScaffoldMessenger.of(rootContext).showSnackBar(
-                const SnackBar(content: Text('缓存已清除')),
+                const SnackBar(content: Text('所有缓存已清除')),
               );
             },
-            child: const Text('清除'),
+            child: const Text('全部清除'),
           ),
         ],
       ),

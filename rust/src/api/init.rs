@@ -1,6 +1,6 @@
 // 初始化和系统相关 API
 
-use crate::api::download;
+use crate::api::{cache, download};
 use crate::core::{network, storage};
 use flutter_rust_bridge::frb;
 use std::sync::{Mutex, OnceLock};
@@ -29,6 +29,11 @@ pub async fn init_app(data_path: String) -> anyhow::Result<()> {
 
     // 加载保存的 Cookies
     load_saved_cookies().await?;
+
+    // 自动清理过期缓存并 VACUUM
+    if let Err(e) = cache::auto_clean_cache(None, None).await {
+        tracing::warn!("Auto clean cache failed: {}", e);
+    }
 
     *guard.lock().unwrap() = true;
     tracing::info!("App initialized with data path: {}", data_path);

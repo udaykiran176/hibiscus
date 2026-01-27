@@ -47,11 +47,19 @@ pub fn get_data_dir() -> Result<PathBuf> {
 }
 
 /// 获取数据库连接
-fn get_db() -> Result<std::sync::MutexGuard<'static, Connection>> {
+pub fn get_db() -> Result<std::sync::MutexGuard<'static, Connection>> {
     DB.get()
         .ok_or_else(|| anyhow::anyhow!("Database not initialized"))?
         .lock()
         .map_err(|e| anyhow::anyhow!("Failed to lock database: {}", e))
+}
+
+/// VACUUM 数据库（压缩回收空间）
+pub fn vacuum() -> Result<()> {
+    let db = get_db()?;
+    db.execute("VACUUM", [])?;
+    tracing::info!("Database vacuumed");
+    Ok(())
 }
 
 // (schema handled by refinery migrations)

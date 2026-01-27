@@ -3,6 +3,7 @@
 // 所有模型以 Api 前缀命名，避免与内部模型冲突
 
 use flutter_rust_bridge::frb;
+use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // 视频相关模型
@@ -10,7 +11,7 @@ use flutter_rust_bridge::frb;
 
 /// 视频卡片信息（列表展示用）
 #[frb(dart_metadata=("freezed"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiVideoCard {
     pub id: String,
     pub title: String,
@@ -133,7 +134,7 @@ pub struct ApiMyListItem {
 
 /// 首页数据
 #[frb(dart_metadata=("freezed"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiHomePage {
     /// HTML 表单 hidden input `_token`（Laravel 表单 token）
     pub form_token: Option<String>,
@@ -147,7 +148,7 @@ pub struct ApiHomePage {
 
 /// Banner 信息
 #[frb(dart_metadata=("freezed"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiBanner {
     pub title: String,
     pub description: Option<String>,
@@ -157,7 +158,7 @@ pub struct ApiBanner {
 
 /// 首页分区
 #[frb(dart_metadata=("freezed"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiHomeSection {
     pub name: String,
     pub videos: Vec<ApiVideoCard>,
@@ -169,7 +170,7 @@ pub struct ApiHomeSection {
 
 /// 搜索结果
 #[frb(dart_metadata=("freezed"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiSearchResult {
     pub videos: Vec<ApiVideoCard>,
     pub total: u32,

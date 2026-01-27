@@ -1,6 +1,7 @@
 // API 模块导出
 // 这些模块通过 FRB 暴露给 Flutter
 
+pub mod cache;
 pub mod download;
 pub mod init;
 pub mod models;

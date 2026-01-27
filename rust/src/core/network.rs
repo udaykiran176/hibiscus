@@ -312,6 +312,23 @@ fn persist_set_cookie_to_db(set_cookie: &str) {
     }
 }
 
+/// 发送 GET 请求，返回字节数据（用于下载图片等）
+pub async fn get_bytes(url: &str) -> Result<Vec<u8>> {
+    tracing::debug!("GET bytes: {}", url);
+    let client = get_client();
+
+    let response = client.get(url).send().await?;
+    persist_response_cookies(&response);
+
+    let status = response.status();
+    if status == 403 || status == 503 {
+        return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+    }
+
+    let bytes = response.bytes().await?;
+    Ok(bytes.to_vec())
+}
+
 /// 检查是否可以直接访问（无需 Cloudflare 验证）
 pub async fn check_access() -> bool {
     match get(&format!("{}/", BASE_URL)).await {

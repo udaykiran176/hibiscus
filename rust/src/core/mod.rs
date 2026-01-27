@@ -1,5 +1,6 @@
 // 核心模块
 
+pub mod cache;
 pub mod network;
 pub mod parser;
 pub mod runtime;

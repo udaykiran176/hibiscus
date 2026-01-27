@@ -4,10 +4,12 @@ use crate::api::models::{
     ApiBanner, ApiFilterOption, ApiFilterOptions, ApiHomePage, ApiHomeSection, ApiSearchFilters,
     ApiSearchResult, ApiTagGroup, ApiVideoCard,
 };
+use crate::core::cache::{web_cache, WEB_CACHE_EXPIRE_MS};
 use crate::core::network;
 use crate::core::parser;
 use chrono::Datelike;
 use flutter_rust_bridge::frb;
+use std::time::Duration;
 
 const BASE_URL: &str = "https://hanime1.me";
 
@@ -75,54 +77,64 @@ fn build_search_url(filters: &ApiSearchFilters) -> String {
     url
 }
 
-/// 执行搜索
+/// 执行搜索 - 使用 10 分钟缓存
 #[frb]
 pub async fn search(filters: ApiSearchFilters) -> anyhow::Result<ApiSearchResult> {
     let url = build_search_url(&filters);
-    tracing::info!("Search URL: {}", url);
+    // 使用 URL 作为缓存键
+    let cache_key = format!("SEARCH${}", url);
 
-    // 尝试发起网络请求
-    match network::get(&url).await {
-        Ok(html) => {
-            // 解析 HTML
-            let result = parser::parse_search_page(&html)?;
+    web_cache::cache_first(
+        &cache_key,
+        Duration::from_millis(WEB_CACHE_EXPIRE_MS as u64),
+        || async {
+            tracing::info!("Search URL: {}", url);
 
-            // 转换为 API 模型
-            let videos: Vec<ApiVideoCard> = result
-                .videos
-                .into_iter()
-                .map(|v| ApiVideoCard {
-                    id: v.id,
-                    title: v.title,
-                    cover_url: v.cover_url,
-                    duration: Some(v.duration).filter(|s| !s.is_empty()),
-                    views: Some(v.views).filter(|s| !s.is_empty()),
-                    upload_date: v.upload_date,
-                    author_name: v.artist,
-                    tags: v.tags,
-                })
-                .collect();
+            // 尝试发起网络请求
+            match network::get(&url).await {
+                Ok(html) => {
+                    // 解析 HTML
+                    let result = parser::parse_search_page(&html)?;
 
-            Ok(ApiSearchResult {
-                videos,
-                total: (result.total_pages * 20) as u32, // 估算
-                page: result.current_page as u32,
-                has_next: result.has_next,
-            })
-        }
-        Err(e) => {
-            let err_str = e.to_string();
+                    // 转换为 API 模型
+                    let videos: Vec<ApiVideoCard> = result
+                        .videos
+                        .into_iter()
+                        .map(|v| ApiVideoCard {
+                            id: v.id,
+                            title: v.title,
+                            cover_url: v.cover_url,
+                            duration: Some(v.duration).filter(|s| !s.is_empty()),
+                            views: Some(v.views).filter(|s| !s.is_empty()),
+                            upload_date: v.upload_date,
+                            author_name: v.artist,
+                            tags: v.tags,
+                        })
+                        .collect();
 
-            // 检查是否需要 Cloudflare 验证
-            if err_str.contains("CLOUDFLARE_CHALLENGE") {
-                return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+                    Ok(ApiSearchResult {
+                        videos,
+                        total: (result.total_pages * 20) as u32, // 估算
+                        page: result.current_page as u32,
+                        has_next: result.has_next,
+                    })
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+
+                    // 检查是否需要 Cloudflare 验证
+                    if err_str.contains("CLOUDFLARE_CHALLENGE") {
+                        return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+                    }
+
+                    // 返回实际错误
+                    tracing::error!("Search network error: {}", err_str);
+                    Err(e)
+                }
             }
-
-            // 返回实际错误
-            tracing::error!("Search network error: {}", err_str);
-            Err(e)
-        }
-    }
+        },
+    )
+    .await
 }
 
 /// 获取过滤选项（从网页实际提取的数据）
@@ -363,73 +375,72 @@ pub async fn get_home_videos(page: u32) -> anyhow::Result<ApiSearchResult> {
     .await
 }
 
-/// 获取首页数据（包含各分区）
+/// 获取首页数据（包含各分区）- 使用 10 分钟缓存
 #[frb]
 pub async fn get_homepage() -> anyhow::Result<ApiHomePage> {
-    let url = format!("{}/", BASE_URL);
-    tracing::info!("Getting homepage: {}", url);
+    let cache_key = "HOMEPAGE";
 
-    match network::get(&url).await {
-        Ok(html) => {
-            let result = parser::parse_homepage(&html)?;
+    web_cache::cache_first(
+        cache_key,
+        Duration::from_millis(WEB_CACHE_EXPIRE_MS as u64),
+        || async {
+            let url = format!("{}/", BASE_URL);
+            tracing::info!("Getting homepage: {}", url);
 
-            // 转换为 API 模型
-            let convert_videos = |videos: Vec<parser::VideoCard>| -> Vec<ApiVideoCard> {
-                videos
-                    .into_iter()
-                    .map(|v| ApiVideoCard {
-                        id: v.id,
-                        title: v.title,
-                        cover_url: v.cover_url,
-                        duration: Some(v.duration).filter(|s| !s.is_empty()),
-                        views: Some(v.views).filter(|s| !s.is_empty()),
-                        upload_date: v.upload_date,
-                        author_name: v.artist,
-                        tags: v.tags,
+            match network::get(&url).await {
+                Ok(html) => {
+                    let result = parser::parse_homepage(&html)?;
+
+                    // 转换为 API 模型
+                    let convert_videos = |videos: Vec<parser::VideoCard>| -> Vec<ApiVideoCard> {
+                        videos
+                            .into_iter()
+                            .map(|v| ApiVideoCard {
+                                id: v.id,
+                                title: v.title,
+                                cover_url: v.cover_url,
+                                duration: Some(v.duration).filter(|s| !s.is_empty()),
+                                views: Some(v.views).filter(|s| !s.is_empty()),
+                                upload_date: v.upload_date,
+                                author_name: v.artist,
+                                tags: v.tags,
+                            })
+                            .collect()
+                    };
+
+                    let sections: Vec<ApiHomeSection> = result
+                        .sections
+                        .into_iter()
+                        .map(|(name, videos)| ApiHomeSection {
+                            name,
+                            videos: convert_videos(videos),
+                        })
+                        .collect();
+
+                    Ok(ApiHomePage {
+                        form_token: result.form_token,
+                        avatar_url: result.avatar_url,
+                        username: result.username,
+                        banner: result.banner.map(|b| ApiBanner {
+                            title: b.title,
+                            description: b.description,
+                            pic_url: b.pic_url,
+                            video_code: b.video_code,
+                        }),
+                        latest_release: convert_videos(result.latest_release),
+                        latest_upload: convert_videos(result.latest_upload),
+                        sections,
                     })
-                    .collect()
-            };
-
-            let sections: Vec<ApiHomeSection> = result
-                .sections
-                .into_iter()
-                .map(|(name, videos)| ApiHomeSection {
-                    name,
-                    videos: convert_videos(videos),
-                })
-                .collect();
-
-            Ok(ApiHomePage {
-                form_token: result.form_token,
-                avatar_url: result.avatar_url,
-                username: result.username,
-                banner: result.banner.map(|b| ApiBanner {
-                    title: b.title,
-                    description: b.description,
-                    pic_url: b.pic_url,
-                    video_code: b.video_code,
-                }),
-                latest_release: convert_videos(result.latest_release),
-                latest_upload: convert_videos(result.latest_upload),
-                sections,
-            })
-        }
-        Err(e) => {
-            let err_str = e.to_string();
-            if err_str.contains("CLOUDFLARE_CHALLENGE") {
-                return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+                    if err_str.contains("CLOUDFLARE_CHALLENGE") {
+                        return Err(anyhow::anyhow!("CLOUDFLARE_CHALLENGE"));
+                    }
+                    Err(e)
+                }
             }
-
-            // 返回模拟数据
-            Ok(ApiHomePage {
-                form_token: None,
-                avatar_url: None,
-                username: None,
-                banner: None,
-                latest_release: vec![],
-                latest_upload: vec![],
-                sections: vec![],
-            })
-        }
-    }
+        },
+    )
+    .await
 }

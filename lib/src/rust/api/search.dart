@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `build_search_url`
 
-/// 执行搜索
+/// 执行搜索 - 使用 10 分钟缓存
 Future<ApiSearchResult> search({required ApiSearchFilters filters}) =>
     RustLib.instance.api.crateApiSearchSearch(filters: filters);
 
@@ -21,6 +21,6 @@ Future<ApiFilterOptions> getFilterOptions() =>
 Future<ApiSearchResult> getHomeVideos({required int page}) =>
     RustLib.instance.api.crateApiSearchGetHomeVideos(page: page);
 
-/// 获取首页数据（包含各分区）
+/// 获取首页数据（包含各分区）- 使用 10 分钟缓存
 Future<ApiHomePage> getHomepage() =>
     RustLib.instance.api.crateApiSearchGetHomepage();

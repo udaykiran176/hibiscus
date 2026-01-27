@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hibiscus/src/rust/api/models.dart';
+import 'package:hibiscus/src/ui/widgets/cached_image.dart';
 
 class VideoCard extends StatelessWidget {
   final ApiVideoCard video;
@@ -134,7 +135,7 @@ class VideoCard extends StatelessWidget {
   Widget _buildCover(BuildContext context) {
     final theme = Theme.of(context);
     
-    // 使用占位图，后续替换为 cached_network_image
+    // 空 URL 或占位图使用默认图标
     if (video.coverUrl.isEmpty || video.coverUrl.startsWith('https://via.placeholder')) {
       return Container(
         color: theme.colorScheme.surfaceContainerHighest,
@@ -148,30 +149,26 @@ class VideoCard extends StatelessWidget {
       );
     }
     
-    return Image.network(
-      video.coverUrl,
+    // 使用缓存图片组件
+    return CachedNetworkImage(
+      imageUrl: video.coverUrl,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Center(
-            child: Icon(
-              Icons.broken_image_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
-            ),
+      placeholder: Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+      errorWidget: Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Center(
+          child: Icon(
+            Icons.broken_image_outlined,
+            size: 48,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
           ),
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
