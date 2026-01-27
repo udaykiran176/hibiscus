@@ -65,8 +65,13 @@ pub fn vacuum() -> Result<()> {
 // (schema handled by refinery migrations)
 
 // ========== 历史记录 ==========
+// 逻辑删除：
+// - deleted_at 为 NULL：未删除
+// - deleted_at < watched_at：删除后又观看过（视为未删除）
+// - deleted_at >= watched_at：已删除
 
 /// 历史记录项
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct HistoryRecord {
     pub id: i64,
@@ -77,6 +82,18 @@ pub(crate) struct HistoryRecord {
     pub watch_progress: i32,
     pub total_duration: i32,
     pub watched_at: i64,
+    pub deleted_at: Option<i64>,
+}
+
+impl HistoryRecord {
+    /// 判断记录是否已删除
+    #[allow(dead_code)]
+    pub fn is_deleted(&self) -> bool {
+        match self.deleted_at {
+            None => false,
+            Some(deleted) => deleted >= self.watched_at,
+        }
+    }
 }
 
 /// 添加/更新历史记录
@@ -91,17 +108,19 @@ pub fn upsert_history(
     let db = get_db()?;
     let now = chrono::Utc::now().timestamp();
 
+    // 插入或更新，同时清除删除标记（因为用户观看了）
     db.execute(
         r#"
-        INSERT INTO history (video_id, title, cover_url, duration, watch_progress, total_duration, watched_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        INSERT INTO history (video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)
         ON CONFLICT(video_id) DO UPDATE SET
             title = excluded.title,
             cover_url = excluded.cover_url,
             duration = excluded.duration,
             watch_progress = excluded.watch_progress,
             total_duration = excluded.total_duration,
-            watched_at = excluded.watched_at
+            watched_at = excluded.watched_at,
+            deleted_at = NULL
         "#,
         params![video_id, title, cover_url, duration, watch_progress, total_duration, now],
     )?;
@@ -109,12 +128,14 @@ pub fn upsert_history(
     Ok(())
 }
 
-/// 获取历史记录列表
-pub fn get_history(limit: i32, offset: i32) -> Result<Vec<HistoryRecord>> {
+/// 获取历史记录列表（不包含已删除的）
+pub(crate) fn get_history(limit: i32, offset: i32) -> Result<Vec<HistoryRecord>> {
     let db = get_db()?;
     let mut stmt = db.prepare(
-        "SELECT id, video_id, title, cover_url, duration, watch_progress, total_duration, watched_at 
-         FROM history ORDER BY watched_at DESC LIMIT ?1 OFFSET ?2"
+        "SELECT id, video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at 
+         FROM history 
+         WHERE deleted_at IS NULL OR deleted_at < watched_at
+         ORDER BY watched_at DESC LIMIT ?1 OFFSET ?2"
     )?;
 
     let records = stmt.query_map(params![limit, offset], |row| {
@@ -127,6 +148,7 @@ pub fn get_history(limit: i32, offset: i32) -> Result<Vec<HistoryRecord>> {
             watch_progress: row.get(5)?,
             total_duration: row.get(6)?,
             watched_at: row.get(7)?,
+            deleted_at: row.get(8)?,
         })
     })?;
 
@@ -138,20 +160,52 @@ pub fn get_history(limit: i32, offset: i32) -> Result<Vec<HistoryRecord>> {
     Ok(result)
 }
 
-/// 获取历史记录总数
-pub fn get_history_count() -> Result<i64> {
+/// 获取所有历史记录（包含已删除的，用于同步）
+pub(crate) fn get_all_history_for_sync() -> Result<Vec<HistoryRecord>> {
     let db = get_db()?;
-    let mut stmt = db.prepare("SELECT COUNT(1) FROM history")?;
+    let mut stmt = db.prepare(
+        "SELECT id, video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at 
+         FROM history ORDER BY watched_at DESC"
+    )?;
+
+    let records = stmt.query_map([], |row| {
+        Ok(HistoryRecord {
+            id: row.get(0)?,
+            video_id: row.get(1)?,
+            title: row.get(2)?,
+            cover_url: row.get(3)?,
+            duration: row.get(4)?,
+            watch_progress: row.get(5)?,
+            total_duration: row.get(6)?,
+            watched_at: row.get(7)?,
+            deleted_at: row.get(8)?,
+        })
+    })?;
+
+    let mut result = Vec::new();
+    for record in records {
+        result.push(record?);
+    }
+
+    Ok(result)
+}
+
+/// 获取历史记录总数（不包含已删除的）
+pub(crate) fn get_history_count() -> Result<i64> {
+    let db = get_db()?;
+    let mut stmt = db.prepare(
+        "SELECT COUNT(1) FROM history WHERE deleted_at IS NULL OR deleted_at < watched_at"
+    )?;
     let count: i64 = stmt.query_row([], |row| row.get(0))?;
     Ok(count)
 }
 
-/// 获取单条历史记录
-pub fn get_history_by_video_id(video_id: &str) -> Result<Option<HistoryRecord>> {
+/// 获取单条历史记录（不包含已删除的）
+pub(crate) fn get_history_by_video_id(video_id: &str) -> Result<Option<HistoryRecord>> {
     let db = get_db()?;
     let mut stmt = db.prepare(
-        "SELECT id, video_id, title, cover_url, duration, watch_progress, total_duration, watched_at 
-         FROM history WHERE video_id = ?1 LIMIT 1"
+        "SELECT id, video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at 
+         FROM history WHERE video_id = ?1 AND (deleted_at IS NULL OR deleted_at < watched_at) LIMIT 1"
     )?;
 
     let mut rows = stmt.query(params![video_id])?;
@@ -165,23 +219,114 @@ pub fn get_history_by_video_id(video_id: &str) -> Result<Option<HistoryRecord>> 
             watch_progress: row.get(5)?,
             total_duration: row.get(6)?,
             watched_at: row.get(7)?,
+            deleted_at: row.get(8)?,
         }))
     } else {
         Ok(None)
     }
 }
 
-/// 删除历史记录
+/// 逻辑删除历史记录
 pub fn delete_history(video_id: &str) -> Result<()> {
     let db = get_db()?;
-    db.execute("DELETE FROM history WHERE video_id = ?1", params![video_id])?;
+    let now = chrono::Utc::now().timestamp();
+    db.execute(
+        "UPDATE history SET deleted_at = ?1 WHERE video_id = ?2",
+        params![now, video_id],
+    )?;
     Ok(())
 }
 
-/// 清空历史记录
+/// 逻辑清空历史记录（标记所有记录为已删除）
 pub fn clear_history() -> Result<()> {
     let db = get_db()?;
-    db.execute("DELETE FROM history", [])?;
+    let now = chrono::Utc::now().timestamp();
+    db.execute("UPDATE history SET deleted_at = ?1", params![now])?;
+    Ok(())
+}
+
+/// 清理过期的已删除记录（保留1个月内的）
+pub fn cleanup_expired_history() -> Result<u64> {
+    let db = get_db()?;
+    let one_month_ago = chrono::Utc::now().timestamp() - 30 * 24 * 60 * 60;
+    
+    // 删除已逻辑删除超过1个月的记录
+    let deleted = db.execute(
+        "DELETE FROM history WHERE deleted_at IS NOT NULL AND deleted_at >= watched_at AND deleted_at < ?1",
+        params![one_month_ago],
+    )?;
+    
+    if deleted > 0 {
+        tracing::info!("Cleaned up {} expired history records", deleted);
+    }
+    
+    Ok(deleted as u64)
+}
+
+/// 合并同步的历史记录（用于 WebDAV 同步）
+/// 规则：
+/// - 浏览进度以 watched_at 最大的为准
+/// - watched_at 和 deleted_at 都取最大值
+pub fn merge_history_record(
+    video_id: &str,
+    title: &str,
+    cover_url: &str,
+    duration: &str,
+    watch_progress: i32,
+    total_duration: i32,
+    watched_at: i64,
+    deleted_at: Option<i64>,
+) -> Result<()> {
+    let db = get_db()?;
+    
+    // 先查询现有记录
+    let mut stmt = db.prepare(
+        "SELECT watched_at, deleted_at, watch_progress, total_duration FROM history WHERE video_id = ?1"
+    )?;
+    let mut rows = stmt.query(params![video_id])?;
+    
+    if let Some(row) = rows.next()? {
+        let local_watched_at: i64 = row.get(0)?;
+        let local_deleted_at: Option<i64> = row.get(1)?;
+        let local_watch_progress: i32 = row.get(2)?;
+        let local_total_duration: i32 = row.get(3)?;
+        drop(rows);
+        drop(stmt);
+        
+        // 合并逻辑
+        let final_watched_at = local_watched_at.max(watched_at);
+        let final_deleted_at = match (local_deleted_at, deleted_at) {
+            (Some(a), Some(b)) => Some(a.max(b)),
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        };
+        
+        // 浏览进度以 watched_at 最大的为准
+        let (final_progress, final_total_duration) = if watched_at > local_watched_at {
+            (watch_progress, total_duration)
+        } else {
+            (local_watch_progress, local_total_duration)
+        };
+        
+        db.execute(
+            "UPDATE history SET title = ?1, cover_url = ?2, duration = ?3, 
+             watch_progress = ?4, total_duration = ?5, watched_at = ?6, deleted_at = ?7 
+             WHERE video_id = ?8",
+            params![title, cover_url, duration, final_progress, final_total_duration, 
+                    final_watched_at, final_deleted_at, video_id],
+        )?;
+    } else {
+        drop(rows);
+        drop(stmt);
+        // 插入新记录
+        db.execute(
+            "INSERT INTO history (video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![video_id, title, cover_url, duration, watch_progress, total_duration, watched_at, deleted_at],
+        )?;
+    }
+    
     Ok(())
 }
 
@@ -212,6 +357,7 @@ impl From<i32> for DownloadStatus {
 }
 
 /// 下载记录（内部使用）
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct DownloadRecord {
     pub id: i64,
@@ -238,6 +384,7 @@ pub(crate) struct DownloadRecord {
 }
 
 /// 下载文件夹记录（内部使用）
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct DownloadFolderRecord {
     pub id: String,
@@ -294,7 +441,7 @@ pub fn add_download(
 }
 
 /// 获取单个下载任务（按 video_id）
-pub fn get_download_by_video_id(video_id: &str) -> Result<Option<DownloadRecord>> {
+pub(crate) fn get_download_by_video_id(video_id: &str) -> Result<Option<DownloadRecord>> {
     let db = get_db()?;
     let mut stmt = db.prepare(
         "SELECT id, video_id, title, cover_url, video_url, quality, description, tags, cover_path,
@@ -385,7 +532,7 @@ pub fn update_download_progress(video_id: &str, downloaded: i64, total: i64) -> 
 }
 
 /// 更新下载状态
-pub fn update_download_status(
+pub(crate) fn update_download_status(
     video_id: &str,
     status: DownloadStatus,
     error: Option<&str>,
@@ -419,7 +566,7 @@ pub fn update_download_description_and_tags(
 }
 
 /// 获取下载列表
-pub fn get_downloads() -> Result<Vec<DownloadRecord>> {
+pub(crate) fn get_downloads() -> Result<Vec<DownloadRecord>> {
     let db = get_db()?;
     let mut stmt = db.prepare(
         "SELECT id, video_id, title, cover_url, video_url, quality, description, tags, cover_path,
@@ -526,7 +673,7 @@ pub fn create_download_folder(id: &str, name: &str) -> Result<()> {
 }
 
 /// 获取所有下载文件夹
-pub fn get_download_folders() -> Result<Vec<DownloadFolderRecord>> {
+pub(crate) fn get_download_folders() -> Result<Vec<DownloadFolderRecord>> {
     let db = get_db()?;
     let mut stmt = db.prepare(
         "SELECT id, name, created_at FROM download_folders ORDER BY created_at ASC",

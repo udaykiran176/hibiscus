@@ -11,6 +11,7 @@ import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/services/app_logger.dart';
+import 'package:hibiscus/src/services/webdav_sync_service.dart';
 
 Future<void> main() async {
   runZonedGuarded(
@@ -44,11 +45,18 @@ class HibiscusApp extends StatelessWidget {
       return MaterialApp(
         title: 'Hibiscus',
         debugShowCheckedModeBanner: false,
+        navigatorKey: appNavigatorKey,
         theme: AppTheme.light,
         darkTheme: AppTheme.dark,
         themeMode: mode,
         initialRoute: AppRoutes.home,
         onGenerateRoute: onGenerateRoute,
+        builder: (context, child) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            WebDavSyncService.autoSyncOnAppStart(context: context);
+          });
+          return child ?? const SizedBox.shrink();
+        },
       );
     });
   }

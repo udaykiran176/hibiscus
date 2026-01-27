@@ -8,6 +8,8 @@ import 'package:hibiscus/src/ui/pages/video_detail_page.dart';
 import 'package:hibiscus/src/ui/shell/app_shell.dart';
 import 'package:hibiscus/src/state/nav_state.dart';
 
+final appNavigatorKey = GlobalKey<NavigatorState>();
+
 /// 路由路径常量
 class AppRoutes {
   static const String home = '/';

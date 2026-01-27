@@ -188,21 +188,21 @@ pub async fn get_video_url(video_id: String, quality: String) -> anyhow::Result<
 
 /// 添加视频到收藏
 #[frb]
-pub async fn add_to_favorites(video_id: String) -> anyhow::Result<bool> {
+pub async fn add_to_favorites(_video_id: String) -> anyhow::Result<bool> {
     // TODO: 实现实际的收藏逻辑
     Ok(true)
 }
 
 /// 从收藏移除视频
 #[frb]
-pub async fn remove_from_favorites(video_id: String) -> anyhow::Result<bool> {
+pub async fn remove_from_favorites(_video_id: String) -> anyhow::Result<bool> {
     // TODO: 实现实际的移除收藏逻辑
     Ok(true)
 }
 
 /// 点赞评论
 #[frb]
-pub async fn like_comment(comment_id: String) -> anyhow::Result<bool> {
+pub async fn like_comment(_comment_id: String) -> anyhow::Result<bool> {
     // TODO: 实现实际的点赞逻辑
     Ok(true)
 }

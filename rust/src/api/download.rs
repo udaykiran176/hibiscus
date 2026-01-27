@@ -854,7 +854,7 @@ fn sanitize_filename(input: &str) -> String {
     }
 }
 
-fn uniquify_path(mut path: PathBuf) -> PathBuf {
+fn uniquify_path(path: PathBuf) -> PathBuf {
     if !path.exists() {
         return path;
     }

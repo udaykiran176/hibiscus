@@ -8,6 +8,7 @@ pub mod init;
 pub mod models;
 pub mod search;
 pub mod settings;
+pub mod sync;
 pub mod user;
 pub mod video;
 // 保留原有的 simple 模块用于测试

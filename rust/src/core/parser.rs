@@ -26,6 +26,7 @@ static DIGITS_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\d+"#).unwrap());
 // ============================================================================
 
 /// 视频卡片信息（内部使用）
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct VideoCard {
     pub id: String,
@@ -94,6 +95,7 @@ pub(crate) struct VideoSource {
 }
 
 /// 创作者信息（内部使用）
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct Creator {
     pub id: String,
@@ -145,6 +147,7 @@ pub(crate) struct Banner {
 }
 
 /// 收藏列表项
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct MyListItems {
     pub videos: Vec<VideoCard>,
@@ -157,7 +160,7 @@ pub(crate) struct MyListItems {
 // ============================================================================
 
 /// 解析搜索结果页面
-pub fn parse_search_page(html: &str) -> Result<SearchPageResult> {
+pub(crate) fn parse_search_page(html: &str) -> Result<SearchPageResult> {
     let document = Html::parse_document(html);
 
     // 尝试解析正常版视频列表
@@ -368,7 +371,7 @@ fn parse_pagination(document: &Html) -> (i32, i32, bool) {
 }
 
 /// 解析视频详情页面
-pub fn parse_video_detail(html: &str) -> Result<VideoDetail> {
+pub(crate) fn parse_video_detail(html: &str) -> Result<VideoDetail> {
     let document = Html::parse_document(html);
 
     // HTML 表单 token：input[name=_token]
@@ -1065,7 +1068,7 @@ fn parse_my_list(document: &Html) -> Option<MyListInfo> {
 }
 
 /// 解析首页
-pub fn parse_homepage(html: &str) -> Result<HomePage> {
+pub(crate) fn parse_homepage(html: &str) -> Result<HomePage> {
     let document = Html::parse_document(html);
 
     // CSRF Token
@@ -1219,7 +1222,7 @@ fn extract_videos_from_row(row: &ElementRef) -> Vec<VideoCard> {
 }
 
 /// 解析收藏/稍后观看列表
-pub fn parse_my_list_items(html: &str) -> Result<MyListItems> {
+pub(crate) fn parse_my_list_items(html: &str) -> Result<MyListItems> {
     let document = Html::parse_document(html);
 
     // CSRF Token
@@ -1290,7 +1293,7 @@ pub fn parse_my_list_items(html: &str) -> Result<MyListItems> {
 }
 
 /// 解析订阅页（订阅作者 + 订阅更新视频）
-pub fn parse_subscriptions_page(
+pub(crate) fn parse_subscriptions_page(
     html: &str,
 ) -> Result<(Vec<(String, Option<String>)>, Vec<VideoCard>, u32)> {
     let document = Html::parse_document(html);

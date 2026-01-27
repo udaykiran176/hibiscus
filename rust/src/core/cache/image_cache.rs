@@ -265,7 +265,7 @@ fn guess_image_extension(data: &[u8]) -> Option<&'static str> {
 }
 
 /// 获取图片尺寸（简单实现，仅支持部分格式）
-fn get_image_dimensions(data: &[u8]) -> (Option<u32>, Option<u32>) {
+fn get_image_dimensions(_data: &[u8]) -> (Option<u32>, Option<u32>) {
     // 这里简化处理，不解析图片尺寸
     // 如果需要可以使用 image crate
     (None, None)

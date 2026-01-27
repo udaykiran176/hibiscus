@@ -57,11 +57,19 @@ futures-util = "0.3"
 md5 = "0.7"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
+# WebDAV sync
+aes-gcm = "0.10"
+flate2 = "1"
+base64 = "0.22"
+rand = "0.8"
+
 [target.'cfg(target_os = "android")'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["cookies", "json", "stream", "rustls-tls-webpki-roots"] }
+reqwest_dav = { version = "0.2.2",  default-features = false, features = ["rustls-tls-webpki-roots"]  }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 reqwest = { version = "0.12", features = ["cookies", "json", "stream"] }
+reqwest_dav = { version = "0.2.2" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

@@ -14,6 +14,7 @@ import 'api/models.dart';
 import 'api/search.dart';
 import 'api/settings.dart';
 import 'api/simple.dart';
+import 'api/sync.dart';
 import 'api/user.dart';
 import 'api/video.dart';
 import 'dart:async';
@@ -120,6 +121,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ApiSubscriptionsPage dco_decode_api_subscriptions_page(dynamic raw);
 
   @protected
+  ApiSyncStatus dco_decode_api_sync_status(dynamic raw);
+
+  @protected
   ApiTagGroup dco_decode_api_tag_group(dynamic raw);
 
   @protected
@@ -133,6 +137,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ApiVideoQuality dco_decode_api_video_quality(dynamic raw);
+
+  @protected
+  ApiWebDavSettings dco_decode_api_web_dav_settings(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
@@ -168,6 +175,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ApiUserInfo dco_decode_box_autoadd_api_user_info(dynamic raw);
+
+  @protected
+  ApiWebDavSettings dco_decode_box_autoadd_api_web_dav_settings(dynamic raw);
 
   @protected
   int dco_decode_box_autoadd_i_32(dynamic raw);
@@ -400,6 +410,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ApiSyncStatus sse_decode_api_sync_status(SseDeserializer deserializer);
+
+  @protected
   ApiTagGroup sse_decode_api_tag_group(SseDeserializer deserializer);
 
   @protected
@@ -413,6 +426,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ApiVideoQuality sse_decode_api_video_quality(SseDeserializer deserializer);
+
+  @protected
+  ApiWebDavSettings sse_decode_api_web_dav_settings(
+    SseDeserializer deserializer,
+  );
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
@@ -462,6 +480,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ApiUserInfo sse_decode_box_autoadd_api_user_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ApiWebDavSettings sse_decode_box_autoadd_api_web_dav_settings(
     SseDeserializer deserializer,
   );
 
@@ -788,6 +811,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_api_sync_status(ApiSyncStatus self, SseSerializer serializer);
+
+  @protected
   void sse_encode_api_tag_group(ApiTagGroup self, SseSerializer serializer);
 
   @protected
@@ -805,6 +831,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_api_video_quality(
     ApiVideoQuality self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_api_web_dav_settings(
+    ApiWebDavSettings self,
     SseSerializer serializer,
   );
 
@@ -868,6 +900,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_api_user_info(
     ApiUserInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_api_web_dav_settings(
+    ApiWebDavSettings self,
     SseSerializer serializer,
   );
 

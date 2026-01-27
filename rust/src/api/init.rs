@@ -58,6 +58,11 @@ pub async fn init_app(data_path: String) -> anyhow::Result<()> {
         tracing::warn!("Auto clean cache failed: {}", e);
     }
 
+    // 清理过期的已删除历史记录（保留1个月）
+    if let Err(e) = storage::cleanup_expired_history() {
+        tracing::warn!("Cleanup expired history failed: {}", e);
+    }
+
     *guard.lock().unwrap() = true;
     tracing::info!("App initialized with data path: {}", data_path);
     Ok(())

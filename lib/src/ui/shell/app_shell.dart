@@ -87,17 +87,7 @@ class _AppShellState extends State<AppShell> {
     _pageController.dispose();
     super.dispose();
   }
-  
-  int _getSelectedIndex(String location, List<_NavDestination> destinations) {
-    for (int i = 0; i < destinations.length; i++) {
-      if (location == destinations[i].route || 
-          (destinations[i].route == AppRoutes.home && location == '/')) {
-        return i;
-      }
-    }
-    return 0;
-  }
-  
+
   void _onDestinationSelected(int index, List<_NavDestination> destinations) {
     appNavState.setIndex(index);
     _pageController.jumpToPage(index);
@@ -127,7 +117,6 @@ class _AppShellState extends State<AppShell> {
       
       // 桌面端：常驻侧栏 (NavigationDrawer 样式)
       if (isDesktop) {
-        //return _buildDesktopLayout(currentIndex);
         return _buildTabletLayout(currentIndex);
       }
       
@@ -141,112 +130,8 @@ class _AppShellState extends State<AppShell> {
     });
   }
   
-  /// 桌面端布局：常驻宽侧栏
-  Widget _buildDesktopLayout(int selectedIndex) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return Row(
-      children: [
-        // 常驻侧栏
-        SizedBox(
-          width: 280,
-          child: Material(
-            color: colorScheme.surface,
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Logo / 标题区域
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.local_florist,
-                          size: 32,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Hibiscus',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  // 导航项
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: _destinations.length,
-                      itemBuilder: (context, index) {
-                        final dest = _destinations[index];
-                        final isSelected = index == selectedIndex;
-                        
-                        // 在设置项前添加分隔线
-                        if (dest.route == AppRoutes.settings) {
-                          return Column(
-                            children: [
-                              const Divider(height: 16),
-                              _buildNavTile(dest, isSelected, index),
-                            ],
-                          );
-                        }
-                        
-                        return _buildNavTile(dest, isSelected, index);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const VerticalDivider(width: 1, thickness: 1),
-        // 主内容
-        Expanded(child: _buildPageView()),
-      ],
-    );
-  }
-  
-  /// 导航列表项
-  Widget _buildNavTile(_NavDestination dest, bool isSelected, int index) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: ListTile(
-        leading: Icon(
-          isSelected ? dest.selectedIcon : dest.icon,
-          color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurfaceVariant,
-        ),
-        title: Text(
-          dest.label,
-          style: TextStyle(
-            color: isSelected ? colorScheme.onSecondaryContainer : colorScheme.onSurface,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-        selected: isSelected,
-        selectedTileColor: colorScheme.secondaryContainer,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
-                        onTap: () => _onDestinationSelected(index, _destinations),
-      ),
-    );
-  }
-  
   /// 平板布局：NavigationRail
   Widget _buildTabletLayout(int selectedIndex) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    
     return Row(
       key: Key("MAIN_ROW"),
       children: [

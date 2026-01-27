@@ -19,6 +19,7 @@ import 'package:hibiscus/src/state/download_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
 import 'package:hibiscus/src/ui/widgets/cached_image.dart' as rust_image;
+import 'package:hibiscus/src/services/webdav_sync_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 视频详情状态
@@ -115,11 +116,16 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     _posSub = _player.stream.position.listen((d) => _lastPos = d);
     _durSub = _player.stream.duration.listen((d) => _lastDur = d);
     _historyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _flushHistory());
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WebDavSyncService.autoSyncIfNeeded(context: context);
+    });
   }
 
   @override
   void dispose() {
     _flushHistory(force: true);
+    WebDavSyncService.autoSyncIfNeeded();
     _historyTimer?.cancel();
     _posSub?.cancel();
     _durSub?.cancel();

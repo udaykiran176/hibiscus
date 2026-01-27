@@ -7,6 +7,7 @@ import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
+import 'package:hibiscus/src/ui/pages/webdav_settings_page.dart';
 import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
 import 'package:hibiscus/src/services/log_export_service.dart';
@@ -131,6 +132,24 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.open_in_new),
                 onTap: () => _openDataDir(context),
               ),
+
+            const Divider(),
+
+            // 同步设置
+            _SectionHeader(title: '同步'),
+            ListTile(
+              leading: const Icon(Icons.cloud_sync_outlined),
+              title: const Text('WebDAV 同步'),
+              subtitle: const Text('同步浏览记录到云端'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const WebDavSettingsPage(),
+                  ),
+                );
+              },
+            ),
 
             const Divider(),
 

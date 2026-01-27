@@ -171,7 +171,7 @@ pub async fn remove_from_favorites(
 pub async fn delete_from_list(
     list_type: String,
     video_code: String,
-    form_token: String,
+    _form_token: String,
     x_csrf_token: String,
 ) -> anyhow::Result<bool> {
     let url = format!("{}/deletePlayitem", network::BASE_URL);
@@ -446,7 +446,7 @@ pub async fn get_video_progress(video_id: String) -> anyhow::Result<Option<ApiPl
 
 /// 设置 Cookie（从 WebView 导入）
 #[frb]
-pub async fn set_cookies(cookies: Vec<(String, String)>) -> anyhow::Result<bool> {
+pub async fn set_cookies(_cookies: Vec<(String, String)>) -> anyhow::Result<bool> {
     // TODO: 保存 Cookie 到持久化存储，并注入 reqwest CookieJar
     Ok(true)
 }
