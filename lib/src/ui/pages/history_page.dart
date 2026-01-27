@@ -81,6 +81,9 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   final _state = _HistoryState();
   final _scrollController = ScrollController();
+  final _isSelectionMode = signal(false);
+  final _selectedIds = signal<Set<String>>(<String>{});
+  final _isOperating = signal(false);
 
   @override
   void initState() {
@@ -96,6 +99,60 @@ class _HistoryPageState extends State<HistoryPage> {
     super.dispose();
   }
 
+  void _exitSelectionMode() {
+    _isSelectionMode.value = false;
+    _selectedIds.value = <String>{};
+  }
+
+  void _toggleSelected(String videoId) {
+    final next = {..._selectedIds.value};
+    if (next.contains(videoId)) {
+      next.remove(videoId);
+    } else {
+      next.add(videoId);
+    }
+    _selectedIds.value = next;
+  }
+
+  void _selectAllVisible() {
+    _selectedIds.value = {..._state.items.value.map((e) => e.videoId)};
+  }
+
+  Future<void> _deleteSelected(BuildContext context) async {
+    final ids = _selectedIds.value.toList();
+    if (ids.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('移除历史记录'),
+        content: Text('将移除 ${ids.length} 条记录，是否继续？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('移除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    _isOperating.value = true;
+    try {
+      for (final id in ids) {
+        await user_api.deletePlayHistory(videoId: id);
+      }
+      _exitSelectionMode();
+      await _state.load(refresh: true);
+    } finally {
+      _isOperating.value = false;
+    }
+  }
+
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -109,13 +166,52 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('播放历史'),
+        title: Watch((_) {
+          final selecting = _isSelectionMode.value;
+          final count = _selectedIds.value.length;
+          return Text(selecting ? '已选择 $count' : '播放历史');
+        }),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _showClearHistoryDialog(context),
-            tooltip: '清除历史',
-          ),
+          Watch((context) {
+            final selecting = _isSelectionMode.value;
+            if (!selecting) {
+              return IconButton(
+                icon: const Icon(Icons.checklist),
+                tooltip: '多选移除',
+                onPressed: () => _isSelectionMode.value = true,
+              );
+            }
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: '全选',
+                  icon: const Icon(Icons.select_all),
+                  onPressed: _selectAllVisible,
+                ),
+                IconButton(
+                  tooltip: '移除所选',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _selectedIds.value.isEmpty
+                      ? null
+                      : () => _deleteSelected(context),
+                ),
+                IconButton(
+                  tooltip: '取消',
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitSelectionMode,
+                ),
+              ],
+            );
+          }),
+          Watch((context) {
+            if (_isSelectionMode.value) return const SizedBox.shrink();
+            return IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _showClearHistoryDialog(context),
+              tooltip: '清除历史',
+            );
+          }),
         ],
       ),
       body: Watch((context) {
@@ -123,47 +219,72 @@ class _HistoryPageState extends State<HistoryPage> {
         final isLoading = _state.isLoading.value;
         final error = _state.error.value;
         final hasMore = _state.hasMore.value;
+        final isSelectionMode = _isSelectionMode.value;
+        final selectedIds = _selectedIds.value;
+        final isOperating = _isOperating.value;
 
+        Widget child;
         if (isLoading && items.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (error != null && items.isEmpty) {
-          return _buildErrorState(context, error);
-        }
-
-        if (items.isEmpty) {
-          return _buildEmptyState(context, theme);
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => _state.load(refresh: true),
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: items.length + (hasMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index >= items.length) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
-                  ),
+          child = const Center(child: CircularProgressIndicator());
+        } else if (error != null && items.isEmpty) {
+          child = _buildErrorState(context, error);
+        } else if (items.isEmpty) {
+          child = _buildEmptyState(context, theme);
+        } else {
+          child = RefreshIndicator(
+            onRefresh: () => _state.load(refresh: true),
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: items.length + (hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index >= items.length) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                final item = items[index];
+                final selected = selectedIds.contains(item.videoId);
+                return _buildHistoryItem(
+                  context,
+                  item,
+                  isSelectionMode: isSelectionMode,
+                  isSelected: selected,
                 );
-              }
-              return _buildHistoryItem(context, items[index]);
-            },
-          ),
+              },
+            ),
+          );
+        }
+
+        if (!isOperating) return child;
+        return Stack(
+          children: [
+            child,
+            Positioned.fill(
+              child: ColoredBox(
+                color: theme.colorScheme.surface.withOpacity(0.4),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ],
         );
       }),
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, ApiPlayHistory item) {
+  Widget _buildHistoryItem(
+    BuildContext context,
+    ApiPlayHistory item, {
+    required bool isSelectionMode,
+    required bool isSelected,
+  }) {
     final theme = Theme.of(context);
     final progressPercent = (item.progress * 100).clamp(0, 100);
 
-    const tileHeight = 72.0;
+    const tileHeight = 96.0;
     final lastPlayed = DateTime.fromMillisecondsSinceEpoch(item.lastPlayedAt * 1000);
     final lastPlayedText =
         '${lastPlayed.month.toString().padLeft(2, '0')}-${lastPlayed.day.toString().padLeft(2, '0')} '
@@ -174,7 +295,19 @@ class _HistoryPageState extends State<HistoryPage> {
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.pushVideo(item.videoId),
+          onTap: () {
+            if (isSelectionMode) {
+              _toggleSelected(item.videoId);
+            } else {
+              context.pushVideo(item.videoId);
+            }
+          },
+          onLongPress: () {
+            if (!isSelectionMode) {
+              _isSelectionMode.value = true;
+              _toggleSelected(item.videoId);
+            }
+          },
           child: SizedBox(
             height: tileHeight,
             child: Stack(
@@ -184,7 +317,10 @@ class _HistoryPageState extends State<HistoryPage> {
                   children: [
                     AspectRatio(
                       aspectRatio: 16 / 9,
-                      child: _HistoryCover(url: item.coverUrl),
+                      child: _HistoryCover(
+                        url: item.coverUrl,
+                        showSelectedOverlay: isSelectionMode && isSelected,
+                      ),
                     ),
                     Expanded(
                       child: Padding(
@@ -212,14 +348,13 @@ class _HistoryPageState extends State<HistoryPage> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: '移除',
-                      onPressed: () async {
-                        await user_api.deletePlayHistory(videoId: item.videoId);
-                        _state.load(refresh: true);
-                      },
-                    ),
+                    if (isSelectionMode)
+                      Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => _toggleSelected(item.videoId),
+                      )
+                    else
+                      const SizedBox(width: 12),
                   ],
                 ),
                 Positioned(
@@ -326,8 +461,9 @@ class _HistoryPageState extends State<HistoryPage> {
 
 class _HistoryCover extends StatelessWidget {
   final String url;
+  final bool showSelectedOverlay;
 
-  const _HistoryCover({required this.url});
+  const _HistoryCover({required this.url, required this.showSelectedOverlay});
 
   @override
   Widget build(BuildContext context) {
@@ -338,13 +474,30 @@ class _HistoryCover extends StatelessWidget {
         child: const Icon(Icons.video_library_outlined),
       );
     }
-    return rust_image.CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      errorWidget: Container(
-        color: theme.colorScheme.surfaceContainerHighest,
-        child: const Icon(Icons.video_library_outlined),
-      ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: rust_image.CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            errorWidget: Container(
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: const Icon(Icons.video_library_outlined),
+            ),
+          ),
+        ),
+        if (showSelectedOverlay)
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.35),
+              ),
+              child: const Center(
+                child: Icon(Icons.check_circle, color: Colors.white),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
