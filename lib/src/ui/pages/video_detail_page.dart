@@ -246,6 +246,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       return;
     }
     _state.videoUrl.value = url;
+    debugPrint('Opening video URL: $url');
     _hasOpened = true;
     await _player.open(
       Media(url, httpHeaders: _kDefaultHeaders),
@@ -631,13 +632,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
           // 视频区域
           Container(
             color: Colors.black,
-      child: Video(
-        controller: _controller,
-        onEnterFullscreen: _enterFullscreen,
-        onExitFullscreen: _exitFullscreen,
-        pauseUponEnteringBackgroundMode: Platform.isIOS ? false : true,
-        resumeUponEnteringForegroundMode: Platform.isIOS,
-      ),
+            child: Video(
+              controller: _controller,
+              onEnterFullscreen: _enterFullscreen,
+              onExitFullscreen: _exitFullscreen,
+              pauseUponEnteringBackgroundMode: Platform.isIOS ? false : true,
+              resumeUponEnteringForegroundMode: Platform.isIOS,
+            ),
           ),
           // 封面占位
           StreamBuilder<bool>(

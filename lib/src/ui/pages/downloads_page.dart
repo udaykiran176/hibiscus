@@ -199,7 +199,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
       final base = await getApplicationDocumentsDirectory();
       destDir = Directory('${base.path}/Hibiscus').path;
     } else {
-      destDir = await FilePicker.platform.getDirectoryPath(dialogTitle: '选择导出文件夹');
+      destDir = await FilePicker.getDirectoryPath(dialogTitle: '选择导出文件夹');
     }
     if (destDir == null || destDir.isEmpty) return;
 
