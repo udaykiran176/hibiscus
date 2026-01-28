@@ -9,6 +9,12 @@ import 'package:hibiscus/src/rust/api/settings.dart' as rust_settings;
 import 'package:hibiscus/src/services/player/player_service.dart';
 
 /// 应用设置
+enum NavigationType {
+  adaptive,
+  bottom,
+  sidebar,
+}
+
 class AppSettings {
   final ThemeMode themeMode;
   final int maxConcurrentDownloads;
@@ -20,6 +26,7 @@ class AppSettings {
   final String? proxyUrl;
   final bool enableProxy;
   final PlayerType preferredPlayerType;
+  final NavigationType navigationType;
   
   const AppSettings({
     this.themeMode = ThemeMode.system,
@@ -32,6 +39,7 @@ class AppSettings {
     this.proxyUrl,
     this.enableProxy = false,
     this.preferredPlayerType = PlayerType.betterPlayer,
+    this.navigationType = NavigationType.adaptive,
   });
 
   /// 获取实际使用的播放器类型（PC 端强制 mediaKit）
@@ -53,6 +61,7 @@ class AppSettings {
     String? proxyUrl,
     bool? enableProxy,
     PlayerType? preferredPlayerType,
+    NavigationType? navigationType,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -66,6 +75,7 @@ class AppSettings {
       proxyUrl: proxyUrl ?? this.proxyUrl,
       enableProxy: enableProxy ?? this.enableProxy,
       preferredPlayerType: preferredPlayerType ?? this.preferredPlayerType,
+      navigationType: navigationType ?? this.navigationType,
     );
   }
   
@@ -80,6 +90,7 @@ class AppSettings {
     'proxyUrl': proxyUrl,
     'enableProxy': enableProxy,
     'preferredPlayerType': preferredPlayerType.index,
+    'navigationType': navigationType.index,
   };
   
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -111,6 +122,11 @@ class AppSettings {
       proxyUrl: json['proxyUrl'],
       enableProxy: json['enableProxy'] ?? false,
       preferredPlayerType: PlayerType.values[parsePlayerType(json['preferredPlayerType'])],
+      navigationType: NavigationType.values[
+          (json['navigationType'] is int
+                  ? json['navigationType']
+                  : NavigationType.adaptive.index)
+              .clamp(0, NavigationType.values.length - 1)],
     );
   }
 }
@@ -217,6 +233,11 @@ class SettingsState {
     await _save();
     
     // TODO: 通知 Rust 更新代理设置
+  }
+
+  Future<void> setNavigationType(NavigationType type) async {
+    settings.value = settings.value.copyWith(navigationType: type);
+    await _save();
   }
 
   /// 设置首选播放器类型

@@ -16,7 +16,7 @@ import 'package:hibiscus/src/services/player/player_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
-  
+
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
@@ -55,11 +55,9 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('设置'),
-      ),
+      appBar: AppBar(title: const Text('设置')),
       body: Watch((context) {
         final settings = settingsState.settings.value;
         final loginStatus = userState.loginStatus.value;
@@ -78,15 +76,28 @@ class _SettingsPageState extends State<SettingsPage> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showThemeModePicker(context, settings.themeMode),
             ),
-            
             const Divider(),
-            
+            _SectionHeader(title: '导航'),
+            ListTile(
+              title: const Text('导航类型'),
+              subtitle: Text(_navigationTypeLabel(settings.navigationType)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  _showNavigationTypePicker(context, settings.navigationType),
+            ),
+
+            const Divider(),
+
             // 播放设置
             _SectionHeader(title: '播放'),
             if (Platform.isAndroid || Platform.isIOS)
               ListTile(
                 title: const Text('全屏方向'),
-                subtitle: Text(_fullscreenOrientationLabel(settings.fullscreenOrientationMode)),
+                subtitle: Text(
+                  _fullscreenOrientationLabel(
+                    settings.fullscreenOrientationMode,
+                  ),
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showFullscreenOrientationPicker(
                   context,
@@ -98,32 +109,40 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: const Text('播放器内核'),
                 subtitle: Text(_playerTypeLabel(settings.preferredPlayerType)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showPlayerTypePicker(context, settings.preferredPlayerType),
+                onTap: () => _showPlayerTypePicker(
+                  context,
+                  settings.preferredPlayerType,
+                ),
               ),
-          
+
             const Divider(),
-          
+
             // 下载设置
             _SectionHeader(title: '下载'),
             ListTile(
               title: const Text('最大并发下载数'),
               subtitle: Text('${settings.maxConcurrentDownloads}'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showConcurrentPicker(context, settings.maxConcurrentDownloads),
+              onTap: () => _showConcurrentPicker(
+                context,
+                settings.maxConcurrentDownloads,
+              ),
             ),
-          
+
             const Divider(),
-          
+
             // 缓存设置
             _SectionHeader(title: '存储'),
             ListTile(
               title: const Text('清除缓存'),
-              subtitle: Text(_loadingCacheSize
-                  ? '正在计算缓存大小...'
-                  : _cacheSizeInfo != null
-                      ? '图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)\n'
-                        'Web缓存: ${_cacheSizeInfo!.webCacheCount} 条'
-                      : '点击清除所有缓存'),
+              subtitle: Text(
+                _loadingCacheSize
+                    ? '正在计算缓存大小...'
+                    : _cacheSizeInfo != null
+                    ? '图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)\n'
+                          'Web缓存: ${_cacheSizeInfo!.webCacheCount} 条'
+                    : '点击清除所有缓存',
+              ),
               isThreeLine: !_loadingCacheSize && _cacheSizeInfo != null,
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showClearCacheDialog(context),
@@ -147,9 +166,7 @@ class _SettingsPageState extends State<SettingsPage> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const WebDavSettingsPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const WebDavSettingsPage()),
                 );
               },
             ),
@@ -173,9 +190,9 @@ class _SettingsPageState extends State<SettingsPage> {
               trailing: const Icon(Icons.share_outlined),
               onTap: () => _shareLogs(context),
             ),
-          
+
             const Divider(),
-            
+
             // 关于
             _SectionHeader(title: '关于'),
             ListTile(
@@ -189,6 +206,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 showLicensePage(context: context);
               },
             ),
+
             // ListTile(
             //   title: const Text('GitHub'),
             //   subtitle: const Text('查看源代码'),
@@ -197,14 +215,13 @@ class _SettingsPageState extends State<SettingsPage> {
             //     // TODO: 打开 GitHub 页面
             //   },
             // ),
-            
             const SizedBox(height: 32),
           ],
         );
       }),
     );
   }
-  
+
   void _showConcurrentPicker(BuildContext context, int current) {
     showDialog(
       context: context,
@@ -228,7 +245,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-  
+
   void _showClearCacheDialog(BuildContext context) {
     final rootContext = context;
     showDialog(
@@ -242,7 +259,9 @@ class _SettingsPageState extends State<SettingsPage> {
             const Text('选择要清除的缓存类型：'),
             const SizedBox(height: 16),
             if (_cacheSizeInfo != null) ...[
-              Text('图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)'),
+              Text(
+                '图片缓存: ${_cacheSizeInfo!.formattedImageSize} (${_cacheSizeInfo!.imageCacheCount} 张)',
+              ),
               Text('Web缓存: ${_cacheSizeInfo!.webCacheCount} 条'),
             ],
           ],
@@ -258,9 +277,9 @@ class _SettingsPageState extends State<SettingsPage> {
               await ImageCacheService.clearImageCache();
               await _loadCacheSize();
               if (!rootContext.mounted) return;
-              ScaffoldMessenger.of(rootContext).showSnackBar(
-                const SnackBar(content: Text('图片缓存已清除')),
-              );
+              ScaffoldMessenger.of(
+                rootContext,
+              ).showSnackBar(const SnackBar(content: Text('图片缓存已清除')));
             },
             child: const Text('仅图片'),
           ),
@@ -270,9 +289,9 @@ class _SettingsPageState extends State<SettingsPage> {
               await ImageCacheService.clearAllCache();
               await _loadCacheSize();
               if (!rootContext.mounted) return;
-              ScaffoldMessenger.of(rootContext).showSnackBar(
-                const SnackBar(content: Text('所有缓存已清除')),
-              );
+              ScaffoldMessenger.of(
+                rootContext,
+              ).showSnackBar(const SnackBar(content: Text('所有缓存已清除')));
             },
             child: const Text('全部清除'),
           ),
@@ -291,9 +310,9 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('打开失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('打开失败: $e')));
     }
   }
 
@@ -316,9 +335,9 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       debugPrint('Log export failed: $e');
       if (!rootContext.mounted) return;
-      ScaffoldMessenger.of(rootContext).showSnackBar(
-        SnackBar(content: Text('导出失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        rootContext,
+      ).showSnackBar(SnackBar(content: Text('导出失败: $e')));
     } finally {
       if (rootContext.mounted) Navigator.of(rootContext).pop();
     }
@@ -392,6 +411,38 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  String _navigationTypeLabel(NavigationType type) {
+    return switch (type) {
+      NavigationType.adaptive => '自适应导航',
+      NavigationType.bottom => '底部导航',
+      NavigationType.sidebar => '侧边导航',
+    };
+  }
+
+  void _showNavigationTypePicker(BuildContext context, NavigationType current) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('导航类型'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: NavigationType.values.map((type) {
+            return RadioListTile<NavigationType>(
+              title: Text(_navigationTypeLabel(type)),
+              value: type,
+              groupValue: current,
+              onChanged: (value) {
+                if (value == null) return;
+                settingsState.setNavigationType(value);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   String _playerTypeLabel(PlayerType type) {
     return switch (type) {
       PlayerType.mediaKit => 'MediaKit（通用）',
@@ -408,10 +459,7 @@ class _SettingsPageState extends State<SettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '选择视频播放器内核：',
-              style: TextStyle(fontSize: 14),
-            ),
+            const Text('选择视频播放器内核：', style: TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             ...PlayerType.values.map((type) {
               return RadioListTile<PlayerType>(
@@ -458,7 +506,8 @@ class _SettingsPageState extends State<SettingsPage> {
       leading: CircleAvatar(
         radius: 22,
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+        backgroundImage:
+            (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
             ? NetworkImage(user.avatarUrl!)
             : null,
         child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
@@ -477,9 +526,9 @@ class _SettingsPageState extends State<SettingsPage> {
             )
           : FilledButton.tonal(
               onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                await Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
                 await userState.checkLoginStatus();
                 if (mounted) setState(() {});
               },
@@ -491,13 +540,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class _SectionHeader extends StatelessWidget {
   final String title;
-  
+
   const _SectionHeader({required this.title});
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Text(

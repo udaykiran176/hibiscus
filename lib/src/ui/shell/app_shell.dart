@@ -12,6 +12,7 @@ import 'package:hibiscus/src/ui/pages/downloads_page.dart';
 import 'package:hibiscus/src/ui/pages/subscriptions_page.dart';
 import 'package:hibiscus/src/ui/pages/settings_page.dart';
 import 'package:hibiscus/src/state/nav_state.dart';
+import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:signals/signals_flutter.dart';
 
 /// 导航项配置
@@ -20,7 +21,7 @@ class _NavDestination {
   final IconData selectedIcon;
   final String label;
   final String route;
-  
+
   const _NavDestination({
     required this.icon,
     required this.selectedIcon,
@@ -67,7 +68,7 @@ class AppShell extends StatefulWidget {
   final int initialIndex;
 
   const AppShell({super.key, this.initialIndex = 0});
-  
+
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -92,14 +93,15 @@ class _AppShellState extends State<AppShell> {
     appNavState.setIndex(index);
     _pageController.jumpToPage(index);
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // 使用 Watch 监听 appNavState 的变化，确保点击导航项时 UI 自动更新
     return Watch((context) {
       // 始终使用 appNavState 中的当前索引，确保布局切换时保持正确的页面
       final currentIndex = appNavState.selectedIndex.value;
-      
+      final navigationType = settingsState.settings.value.navigationType;
+
       // 确保 PageController 与当前索引同步（布局切换时）
       if (_pageController.hasClients) {
         final currentPage = _pageController.page?.round();
@@ -111,25 +113,27 @@ class _AppShellState extends State<AppShell> {
           });
         }
       }
-      
+
       final isDesktop = Breakpoints.isDesktop(context);
       final isTablet = Breakpoints.isTablet(context);
-      
-      // 桌面端：常驻侧栏 (NavigationDrawer 样式)
-      if (isDesktop) {
+
+      if (navigationType == NavigationType.bottom) {
+        return _buildMobileLayout(currentIndex);
+      }
+
+      if (navigationType == NavigationType.sidebar) {
         return _buildTabletLayout(currentIndex);
       }
-      
-      // 平板：NavigationRail
-      if (isTablet) {
+
+      // 自适应（Adaptive）
+      if (isDesktop || isTablet) {
         return _buildTabletLayout(currentIndex);
       }
-      
-      // 手机：底部导航栏
+
       return _buildMobileLayout(currentIndex);
     });
   }
-  
+
   /// 平板布局：NavigationRail
   Widget _buildTabletLayout(int selectedIndex) {
     return Row(
@@ -137,7 +141,8 @@ class _AppShellState extends State<AppShell> {
       children: [
         NavigationRail(
           selectedIndex: selectedIndex,
-          onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
+          onDestinationSelected: (index) =>
+              _onDestinationSelected(index, _destinations),
           labelType: NavigationRailLabelType.all,
           destinations: _destinations.map((dest) {
             return NavigationRailDestination(
@@ -148,27 +153,26 @@ class _AppShellState extends State<AppShell> {
           }).toList(),
         ),
         const VerticalDivider(width: 1, thickness: 1),
-        Expanded(child: Scaffold(
-          key: Key("MAIN_SCAFFOLD"),
-            body: _buildPageView(),
-        ),),
+        Expanded(
+          child: Scaffold(key: Key("MAIN_SCAFFOLD"), body: _buildPageView()),
+        ),
       ],
     );
   }
-  
+
   /// 手机布局：底部导航栏
   Widget _buildMobileLayout(int selectedIndex) {
-    
     return Row(
       key: Key("MAIN_ROW"),
-        children: [
-          Expanded(child:
-          Scaffold(
+      children: [
+        Expanded(
+          child: Scaffold(
             key: Key("MAIN_SCAFFOLD"),
             body: _buildPageView(),
             bottomNavigationBar: NavigationBar(
               selectedIndex: selectedIndex,
-              onDestinationSelected: (index) => _onDestinationSelected(index, _destinations),
+              onDestinationSelected: (index) =>
+                  _onDestinationSelected(index, _destinations),
               destinations: _destinations.map((dest) {
                 return NavigationDestination(
                   icon: Icon(dest.icon),
@@ -177,7 +181,8 @@ class _AppShellState extends State<AppShell> {
                 );
               }).toList(),
             ),
-        ),),
+          ),
+        ),
       ],
     );
   }
