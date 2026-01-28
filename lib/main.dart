@@ -15,24 +15,77 @@ import 'package:hibiscus/src/services/webdav_sync_service.dart';
 
 Future<void> main() async {
   runZonedGuarded(
-    () async {
+    () {
       WidgetsFlutterBinding.ensureInitialized();
-
-      // 初始化 Rust 库
-      await RustLib.init();
-      final appSupportDir = await getApplicationSupportDirectory();
-      debugPrint('App Support Directory: ${appSupportDir.path}');
-      await init_api.initApp(dataPath: appSupportDir.path);
-      AppLogger.installGlobalHandlers();
-      await userState.checkLoginStatus();
-      await settingsState.init();
-
-      MediaKit.ensureInitialized();
-
-      runApp(const HibiscusApp());
+      runApp(const AppEntry());
     },
     (error, stack) => AppLogger.error('zone', error.toString(), stack: stack),
   );
+}
+
+class AppEntry extends StatefulWidget {
+  const AppEntry({super.key});
+
+  @override
+  State<AppEntry> createState() => _AppEntryState();
+}
+
+class _AppEntryState extends State<AppEntry> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await RustLib.init();
+    final appSupportDir = await getApplicationSupportDirectory();
+    debugPrint('App Support Directory: ${appSupportDir.path}');
+    await init_api.initApp(dataPath: appSupportDir.path);
+    AppLogger.installGlobalHandlers();
+    await userState.checkLoginStatus();
+    await settingsState.init();
+    MediaKit.ensureInitialized();
+    if (!mounted) return;
+    setState(() => _initialized = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      return const InitializationPage();
+    }
+    return const HibiscusApp();
+  }
+}
+
+class InitializationPage extends StatelessWidget {
+  const InitializationPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Hibiscus',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Hibiscus')),
+        body: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('正在初始化...'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class HibiscusApp extends StatelessWidget {
