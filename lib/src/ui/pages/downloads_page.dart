@@ -910,6 +910,9 @@ class _DownloadsPageState extends State<DownloadsPage> {
                 context.pushDownloadDetail(item);
               }
             },
+            onLongPress: () {
+              _showItemMenu(context, item);
+            },
             onPause: () async {
               await download_api.pauseDownload(taskId: item.id);
               await _loadDownloads();
@@ -923,6 +926,140 @@ class _DownloadsPageState extends State<DownloadsPage> {
       ),
     );
   }
+
+  Future<void> _showItemMenu(BuildContext tileContext, ApiDownloadTask item) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.travel_explore),
+              title: const Text('溯源'),
+              onTap: () => Navigator.pop(context, 'source'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('分享'),
+              onTap: () => Navigator.pop(context, 'share'),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+              title: Text('删除', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    switch (action) {
+      case 'source':
+        this.context.pushVideo(item.videoId);
+        return;
+      case 'share':
+        await _shareOne(tileContext, item);
+        return;
+      case 'delete':
+        await _deleteOne(item);
+        return;
+    }
+  }
+
+  Future<void> _shareOne(BuildContext tileContext, ApiDownloadTask item) async {
+    if (kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(content: Text('Web 暂不支持分享文件')),
+      );
+      return;
+    }
+
+    if (item.status is! ApiDownloadStatus_Completed ||
+        item.filePath == null ||
+        item.filePath!.isEmpty ||
+        !File(item.filePath!).existsSync()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(content: Text('请选择已完成且文件存在的下载任务')),
+      );
+      return;
+    }
+
+    final shareOrigin = _shareOriginFromContext(tileContext);
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(item.filePath!)],
+          subject: 'Hibiscus downloads',
+          text: item.title,
+          sharePositionOrigin: shareOrigin,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(content: Text('分享失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _deleteOne(ApiDownloadTask item) async {
+    bool deleteFile = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('删除下载任务'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: deleteFile,
+                onChanged: (v) => setState(() => deleteFile = v ?? true),
+                title: const Text('同时删除已下载文件（含未完成的临时文件）'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    _isOperating.value = true;
+    try {
+      await download_api.deleteDownload(taskId: item.id, deleteFile: deleteFile);
+      final nextSelected = {..._selectedIds.value}..remove(item.id);
+      _selectedIds.value = nextSelected;
+      await _loadDownloads();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$e')),
+      );
+    } finally {
+      _isOperating.value = false;
+    }
+  }
 }
 
 class _DownloadListTile extends StatelessWidget {
@@ -930,6 +1067,7 @@ class _DownloadListTile extends StatelessWidget {
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final VoidCallback onPause;
   final VoidCallback onResume;
 
@@ -938,6 +1076,7 @@ class _DownloadListTile extends StatelessWidget {
     required this.isSelectionMode,
     required this.isSelected,
     required this.onTap,
+    required this.onLongPress,
     required this.onPause,
     required this.onResume,
   });
@@ -955,6 +1094,7 @@ class _DownloadListTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           child: SizedBox(
             height: tileHeight,
             child: Stack(

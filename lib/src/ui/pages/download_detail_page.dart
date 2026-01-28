@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hibiscus/src/router/router.dart';
+import 'package:hibiscus/src/rust/api/download.dart' as download_api;
 import 'package:hibiscus/src/rust/api/models.dart';
+import 'package:hibiscus/src/rust/api/user.dart' as user_api;
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DownloadDetailPage extends StatefulWidget {
   final ApiDownloadTask task;
@@ -26,16 +30,32 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
   String? _error;
   Orientation _lastOrientation = Orientation.portrait;
 
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
+  Timer? _historyTimer;
+  Duration _lastPos = Duration.zero;
+  Duration _lastDur = Duration.zero;
+  int _lastSavedAtMs = 0;
+
   @override
   void initState() {
     super.initState();
     _player = Player();
     _controller = VideoController(_player);
     _open();
+
+    _posSub = _player.stream.position.listen((d) => _lastPos = d);
+    _durSub = _player.stream.duration.listen((d) => _lastDur = d);
+    _historyTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) => _flushHistory());
   }
 
   @override
   void dispose() {
+    _flushHistory(force: true);
+    _historyTimer?.cancel();
+    _posSub?.cancel();
+    _durSub?.cancel();
     _player.dispose();
     super.dispose();
   }
@@ -48,6 +68,7 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
         await _player.open(Media(localPath), play: true);
         _hasOpened = true;
         if (mounted) setState(() {});
+        await _flushHistory(force: true);
         return;
       }
       _error = widget.task.status is ApiDownloadStatus_Completed
@@ -58,6 +79,168 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
       _error = e.toString();
       if (mounted) setState(() {});
     }
+  }
+
+  Future<void> _flushHistory({bool force = false}) async {
+    if (!_hasOpened) return;
+    if (_lastDur <= Duration.zero) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (!force && now - _lastSavedAtMs < 4000) return;
+
+    final durMs = _lastDur.inMilliseconds;
+    if (durMs <= 0) return;
+    final posMs = _lastPos.inMilliseconds.clamp(0, durMs);
+    final progress = (posMs / durMs).clamp(0.0, 1.0);
+    if (!force && progress <= 0) return;
+
+    _lastSavedAtMs = now;
+    try {
+      await user_api.updatePlayHistory(
+        videoId: widget.task.videoId,
+        title: widget.task.title,
+        coverUrl: widget.task.coverUrl,
+        progress: progress,
+        duration: _lastDur.inSeconds,
+      );
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  Future<void> _showTaskMenu() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.travel_explore),
+              title: const Text('溯源'),
+              onTap: () => Navigator.pop(context, 'source'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('分享'),
+              onTap: () => Navigator.pop(context, 'share'),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('删除',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    if (action == 'source') {
+      context.pushVideo(widget.task.videoId);
+      return;
+    }
+    if (action == 'share') {
+      await _shareFile();
+      return;
+    }
+    if (action == 'delete') {
+      await _confirmDelete();
+      return;
+    }
+  }
+
+  Future<void> _shareFile() async {
+    final localPath = widget.task.filePath;
+    if (localPath == null || localPath.isEmpty || !File(localPath).existsSync()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('本地文件不存在，无法分享')),
+      );
+      return;
+    }
+
+    final shareOrigin = _shareOriginFromContext(context);
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(localPath)],
+          subject: 'Hibiscus download',
+          text: widget.task.title,
+          sharePositionOrigin: shareOrigin,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('分享失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    bool deleteFile = true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('删除下载任务'),
+          content: CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: deleteFile,
+            onChanged: (v) => setState(() => deleteFile = v ?? true),
+            title: const Text('同时删除已下载文件（含未完成的临时文件）'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('删除'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await download_api.deleteDownload(
+        taskId: widget.task.id,
+        deleteFile: deleteFile,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(deleteFile ? '已删除文件' : '已移除任务')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：$e')),
+      );
+    }
+  }
+
+  Rect _shareOriginFromContext(BuildContext context) {
+    final renderObject = context.findRenderObject();
+    final box = renderObject is RenderBox ? renderObject : null;
+    if (box == null || !box.hasSize || box.size.isEmpty) {
+      return const Rect.fromLTWH(1, 1, 1, 1);
+    }
+    final origin = box.localToGlobal(Offset.zero);
+    final rect = origin & box.size;
+    if (rect.isEmpty) return const Rect.fromLTWH(1, 1, 1, 1);
+    return rect;
   }
 
   @override
@@ -74,6 +257,11 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
             tooltip: '溯源',
             icon: const Icon(Icons.travel_explore),
             onPressed: () => context.pushVideo(task.videoId),
+          ),
+          IconButton(
+            tooltip: '更多',
+            icon: const Icon(Icons.more_vert),
+            onPressed: _showTaskMenu,
           ),
         ],
       ),
@@ -115,32 +303,42 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if ((task.authorName ?? '').trim().isNotEmpty) ...[
-                  _buildAuthor(task, theme),
-                  const SizedBox(height: 12),
-                ],
-                Text(task.title, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(
-                  '${task.quality} · ${task.status.map(pending: (_) => "等待中", downloading: (_) => "下载中", paused: (_) => "已暂停", completed: (_) => "已完成", failed: (_) => "失败")}',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if ((task.authorName ?? '').trim().isNotEmpty) ...[
+                      _buildAuthor(task, theme),
+                      const SizedBox(height: 12),
+                    ],
+                    Text(task.title, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${task.quality} · ${task.status.map(pending: (_) => "等待中", downloading: (_) => "下载中", paused: (_) => "已暂停", completed: (_) => "已完成", failed: (_) => "失败")}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (task.description != null &&
+                        task.description!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(task.description!, style: theme.textTheme.bodyMedium),
+                    ],
+                    if (task.tags.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children:
+                            task.tags.map((t) => Chip(label: Text(t))).toList(),
+                      ),
+                    ],
+                  ],
                 ),
-                if (task.description != null && task.description!.trim().isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(task.description!, style: theme.textTheme.bodyMedium),
-                ],
-                if (task.tags.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: task.tags.map((t) => Chip(label: Text(t))).toList(),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ],

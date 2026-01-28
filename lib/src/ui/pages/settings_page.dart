@@ -7,6 +7,7 @@ import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
+import 'package:hibiscus/src/ui/pages/log_viewer_page.dart';
 import 'package:hibiscus/src/ui/pages/webdav_settings_page.dart';
 import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
@@ -154,6 +155,16 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(),
 
             _SectionHeader(title: '诊断'),
+            ListTile(
+              title: const Text('日志预览'),
+              subtitle: const Text('在应用内查看最近日志'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LogViewerPage()),
+                );
+              },
+            ),
             ListTile(
               title: const Text('导出日志'),
               subtitle: const Text('打包日志用于反馈问题'),
