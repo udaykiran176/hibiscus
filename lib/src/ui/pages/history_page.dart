@@ -1,10 +1,10 @@
 // 播放历史页
 
 import 'package:flutter/material.dart';
-import 'package:hibiscus/src/router/router.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/rust/api/user.dart' as user_api;
 import 'package:hibiscus/src/rust/api/models.dart';
+import 'package:hibiscus/src/ui/pages/video_detail_page.dart';
 import 'package:hibiscus/src/ui/widgets/cached_image.dart' as rust_image;
 
 /// 历史记录状态
@@ -160,6 +160,37 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  Future<void> _openVideoAndUpdateProgress(String videoId) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VideoDetailPage(videoId: videoId),
+      ),
+    );
+
+    // 返回后仅更新该条目进度/时间，不刷新列表也不重排
+    ApiPlayHistory? updated;
+    try {
+      updated = await user_api.getVideoProgress(videoId: videoId);
+    } catch (_) {
+      return;
+    }
+    if (!mounted || updated == null) return;
+
+    final current = _state.items.value;
+    final idx = current.indexWhere((e) => e.videoId == videoId);
+    if (idx < 0) return;
+
+    final next = [...current];
+    next[idx] = next[idx].copyWith(
+      progress: updated.progress,
+      duration: updated.duration,
+      lastPlayedAt: updated.lastPlayedAt,
+      title: updated.title,
+      coverUrl: updated.coverUrl,
+    );
+    _state.items.value = next;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -299,7 +330,7 @@ class _HistoryPageState extends State<HistoryPage> {
             if (isSelectionMode) {
               _toggleSelected(item.videoId);
             } else {
-              context.pushVideo(item.videoId);
+              _openVideoAndUpdateProgress(item.videoId);
             }
           },
           onLongPress: () {

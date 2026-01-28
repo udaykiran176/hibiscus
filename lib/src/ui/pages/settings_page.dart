@@ -12,6 +12,7 @@ import 'package:hibiscus/src/ui/pages/webdav_settings_page.dart';
 import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
 import 'package:hibiscus/src/services/log_export_service.dart';
+import 'package:hibiscus/src/services/player/player_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -82,12 +83,6 @@ class _SettingsPageState extends State<SettingsPage> {
             
             // 播放设置
             _SectionHeader(title: '播放'),
-            SwitchListTile(
-              title: const Text('自动播放'),
-              subtitle: const Text('打开视频后自动开始播放'),
-              value: settings.autoPlay,
-              onChanged: (value) => settingsState.setAutoPlay(value),
-            ),
             if (Platform.isAndroid || Platform.isIOS)
               ListTile(
                 title: const Text('全屏方向'),
@@ -98,6 +93,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   settings.fullscreenOrientationMode,
                 ),
               ),
+            if (Platform.isAndroid || Platform.isIOS) ...[
+              ListTile(
+                title: const Text('播放器内核'),
+                subtitle: Text(_playerTypeLabel(settings.preferredPlayerType)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showPlayerTypePicker(context, settings.preferredPlayerType),
+              ),
+              if (settings.preferredPlayerType == PlayerType.betterPlayer)
+                SwitchListTile(
+                  title: const Text('画中画'),
+                  subtitle: const Text('使用 BetterPlayer 时支持画中画模式'),
+                  value: settings.enablePictureInPicture,
+                  onChanged: (value) => settingsState.setEnablePictureInPicture(value),
+                ),
+            ],
           
             const Divider(),
           
@@ -385,6 +395,56 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+
+  String _playerTypeLabel(PlayerType type) {
+    return switch (type) {
+      PlayerType.betterPlayer => 'BetterPlayer（支持画中画）',
+      PlayerType.mediaKit => 'MediaKit（通用）',
+    };
+  }
+
+  void _showPlayerTypePicker(BuildContext context, PlayerType current) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('播放器内核'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '选择视频播放器内核：',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            ...PlayerType.values.map((type) {
+              return RadioListTile<PlayerType>(
+                title: Text(_playerTypeLabel(type)),
+                subtitle: type == PlayerType.betterPlayer
+                    ? const Text('iOS/Android 默认，支持画中画')
+                    : const Text('跨平台通用'),
+                value: type,
+                groupValue: current,
+                onChanged: (value) {
+                  if (value == null) return;
+                  settingsState.setPreferredPlayerType(value);
+                  Navigator.pop(context);
+                },
+              );
+            }),
+            const SizedBox(height: 8),
+            Text(
+              '注：切换播放器后需要重新打开视频页面才会生效',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,15 +1,17 @@
 // 设置状态管理
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:signals/signals_flutter.dart';
 import 'dart:convert';
 import 'package:hibiscus/src/rust/api/settings.dart' as rust_settings;
+import 'package:hibiscus/src/services/player/player_service.dart';
 
 /// 应用设置
 class AppSettings {
   final ThemeMode themeMode;
   final int maxConcurrentDownloads;
-  final bool autoPlay;
   final double defaultVolume;
   final bool hardwareAcceleration;
   final String defaultPlayQuality;
@@ -17,11 +19,12 @@ class AppSettings {
   final FullscreenOrientationMode fullscreenOrientationMode;
   final String? proxyUrl;
   final bool enableProxy;
+  final PlayerType preferredPlayerType;
+  final bool enablePictureInPicture;
   
   const AppSettings({
     this.themeMode = ThemeMode.system,
     this.maxConcurrentDownloads = 1,
-    this.autoPlay = true,
     this.defaultVolume = 1.0,
     this.hardwareAcceleration = true,
     this.defaultPlayQuality = '1080P',
@@ -29,12 +32,21 @@ class AppSettings {
     this.fullscreenOrientationMode = FullscreenOrientationMode.landscape,
     this.proxyUrl,
     this.enableProxy = false,
+    this.preferredPlayerType = PlayerType.betterPlayer,
+    this.enablePictureInPicture = true,
   });
+
+  /// 获取实际使用的播放器类型（PC 端强制 mediaKit）
+  PlayerType get effectivePlayerType {
+    if (Platform.isAndroid || Platform.isIOS) {
+      return preferredPlayerType;
+    }
+    return PlayerType.mediaKit;
+  }
   
   AppSettings copyWith({
     ThemeMode? themeMode,
     int? maxConcurrentDownloads,
-    bool? autoPlay,
     double? defaultVolume,
     bool? hardwareAcceleration,
     String? defaultPlayQuality,
@@ -42,11 +54,12 @@ class AppSettings {
     FullscreenOrientationMode? fullscreenOrientationMode,
     String? proxyUrl,
     bool? enableProxy,
+    PlayerType? preferredPlayerType,
+    bool? enablePictureInPicture,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       maxConcurrentDownloads: maxConcurrentDownloads ?? this.maxConcurrentDownloads,
-      autoPlay: autoPlay ?? this.autoPlay,
       defaultVolume: defaultVolume ?? this.defaultVolume,
       hardwareAcceleration: hardwareAcceleration ?? this.hardwareAcceleration,
       defaultPlayQuality: defaultPlayQuality ?? this.defaultPlayQuality,
@@ -55,13 +68,14 @@ class AppSettings {
           fullscreenOrientationMode ?? this.fullscreenOrientationMode,
       proxyUrl: proxyUrl ?? this.proxyUrl,
       enableProxy: enableProxy ?? this.enableProxy,
+      preferredPlayerType: preferredPlayerType ?? this.preferredPlayerType,
+      enablePictureInPicture: enablePictureInPicture ?? this.enablePictureInPicture,
     );
   }
   
   Map<String, dynamic> toJson() => {
     'themeMode': themeMode.index,
     'maxConcurrentDownloads': maxConcurrentDownloads,
-    'autoPlay': autoPlay,
     'defaultVolume': defaultVolume,
     'hardwareAcceleration': hardwareAcceleration,
     'defaultPlayQuality': defaultPlayQuality,
@@ -69,6 +83,8 @@ class AppSettings {
     'fullscreenOrientationMode': fullscreenOrientationMode.index,
     'proxyUrl': proxyUrl,
     'enableProxy': enableProxy,
+    'preferredPlayerType': preferredPlayerType.index,
+    'enablePictureInPicture': enablePictureInPicture,
   };
   
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -82,10 +98,15 @@ class AppSettings {
           .clamp(0, FullscreenOrientationMode.values.length - 1);
       return FullscreenOrientationMode.values[idx];
     }
+    PlayerType parsePlayerType(dynamic v) {
+      final parsed = (v is num) ? v.toInt() : int.tryParse('$v');
+      final idx = (parsed ?? PlayerType.betterPlayer.index)
+          .clamp(0, PlayerType.values.length - 1);
+      return PlayerType.values[idx];
+    }
     return AppSettings(
       themeMode: ThemeMode.values[json['themeMode'] ?? 0],
       maxConcurrentDownloads: clampConcurrent(json['maxConcurrentDownloads']),
-      autoPlay: json['autoPlay'] ?? true,
       defaultVolume: (json['defaultVolume'] ?? 1.0).toDouble(),
       hardwareAcceleration: json['hardwareAcceleration'] ?? true,
       defaultPlayQuality: json['defaultPlayQuality'] ?? '1080P',
@@ -94,6 +115,8 @@ class AppSettings {
           parseFullscreenMode(json['fullscreenOrientationMode']),
       proxyUrl: json['proxyUrl'],
       enableProxy: json['enableProxy'] ?? false,
+      preferredPlayerType: parsePlayerType(json['preferredPlayerType']),
+      enablePictureInPicture: json['enablePictureInPicture'] ?? true,
     );
   }
 }
@@ -164,11 +187,6 @@ class SettingsState {
   }
   
   /// 设置自动播放
-  Future<void> setAutoPlay(bool autoPlay) async {
-    settings.value = settings.value.copyWith(autoPlay: autoPlay);
-    await _save();
-  }
-
   /// 设置默认播放清晰度
   Future<void> setDefaultPlayQuality(String quality) async {
     settings.value = settings.value.copyWith(defaultPlayQuality: quality);
@@ -207,6 +225,18 @@ class SettingsState {
     await _save();
     
     // TODO: 通知 Rust 更新代理设置
+  }
+
+  /// 设置首选播放器类型
+  Future<void> setPreferredPlayerType(PlayerType type) async {
+    settings.value = settings.value.copyWith(preferredPlayerType: type);
+    await _save();
+  }
+
+  /// 设置画中画开关
+  Future<void> setEnablePictureInPicture(bool enabled) async {
+    settings.value = settings.value.copyWith(enablePictureInPicture: enabled);
+    await _save();
   }
   
   /// 重置设置

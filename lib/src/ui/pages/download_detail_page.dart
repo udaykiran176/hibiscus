@@ -2,15 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:hibiscus/src/router/router.dart';
 import 'package:hibiscus/src/rust/api/download.dart' as download_api;
 import 'package:hibiscus/src/rust/api/models.dart';
 import 'package:hibiscus/src/rust/api/user.dart' as user_api;
-import 'package:hibiscus/src/state/settings_state.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:hibiscus/src/services/player/player.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DownloadDetailPage extends StatefulWidget {
@@ -23,15 +20,13 @@ class DownloadDetailPage extends StatefulWidget {
 }
 
 class _DownloadDetailPageState extends State<DownloadDetailPage> {
-  late final Player _player;
-  late final VideoController _controller;
+  late final PlayerService _player;
 
   bool _hasOpened = false;
   String? _error;
   Orientation _lastOrientation = Orientation.portrait;
 
-  StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration>? _durSub;
+  StreamSubscription<PlayerState>? _stateSub;
   Timer? _historyTimer;
   Duration _lastPos = Duration.zero;
   Duration _lastDur = Duration.zero;
@@ -40,12 +35,21 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
   @override
   void initState() {
     super.initState();
-    _player = Player();
-    _controller = VideoController(_player);
+    // 使用单例管理器获取播放器，避免重复创建
+    _player = PlayerManager.instance.acquire();
+    _setupListeners();
     _open();
+  }
 
-    _posSub = _player.stream.position.listen((d) => _lastPos = d);
-    _durSub = _player.stream.duration.listen((d) => _lastDur = d);
+  void _setupListeners() {
+    _stateSub = _player.stateStream.listen((state) {
+      _lastPos = state.position;
+      _lastDur = state.duration;
+      if (state.error != null) {
+        _error = state.error;
+      }
+      if (mounted) setState(() {});
+    });
     _historyTimer =
         Timer.periodic(const Duration(seconds: 5), (_) => _flushHistory());
   }
@@ -54,20 +58,43 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
   void dispose() {
     _flushHistory(force: true);
     _historyTimer?.cancel();
-    _posSub?.cancel();
-    _durSub?.cancel();
-    _player.dispose();
+    _stateSub?.cancel();
+    
+    // 释放播放器引用（单例管理）
+    PlayerManager.instance.release();
+    
     super.dispose();
   }
 
   Future<void> _open() async {
     try {
       _error = null;
-      final localPath = widget.task.filePath;
+      var localPath = widget.task.filePath;
+      if (localPath == null || localPath.isEmpty) {
+        try {
+          final all = await download_api.getAllDownloads();
+          for (final t in all) {
+            if (t.id == widget.task.id || t.videoId == widget.task.videoId) {
+              localPath = t.filePath;
+              break;
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
       if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
-        await _player.open(Media(localPath), play: true);
+        final resumeAt = await _loadResumePosition(widget.task.videoId);
+        
+        // 先设置 _hasOpened 并更新 UI，移除封面
         _hasOpened = true;
         if (mounted) setState(() {});
+        
+        await _player.openFile(
+          localPath,
+          autoPlay: true,
+          startPosition: resumeAt,
+        );
         await _flushHistory(force: true);
         return;
       }
@@ -78,6 +105,21 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
     } catch (e) {
       _error = e.toString();
       if (mounted) setState(() {});
+    }
+  }
+
+  Future<Duration?> _loadResumePosition(String videoId) async {
+    try {
+      final history = await user_api.getVideoProgress(videoId: videoId);
+      if (history == null) return null;
+      final duration = history.duration;
+      if (duration <= 0) return null;
+      final seconds = (history.progress.clamp(0.0, 1.0) * duration).round();
+      if (seconds < 3) return null;
+      if (seconds >= duration - 3) return null;
+      return Duration(seconds: seconds);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -249,10 +291,23 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
     final task = widget.task;
     _lastOrientation = MediaQuery.of(context).orientation;
 
+    // 更新播放器方向
+    if (_player is MediaKitPlayer) {
+      (_player as MediaKitPlayer).updateOrientation(_lastOrientation);
+    } else if (_player is BetterPlayerAdapter) {
+      (_player as BetterPlayerAdapter).updateOrientation(_lastOrientation);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('下载详情'),
         actions: [
+          if (_player.supportsPictureInPicture)
+            IconButton(
+              tooltip: '画中画',
+              icon: const Icon(Icons.picture_in_picture_alt),
+              onPressed: () => _player.enterPictureInPicture(),
+            ),
           IconButton(
             tooltip: '溯源',
             icon: const Icon(Icons.travel_explore),
@@ -272,17 +327,7 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Container(
-                  color: Colors.black,
-                child: Video(
-                  controller: _controller,
-                  onEnterFullscreen: _enterFullscreen,
-                  onExitFullscreen: _exitFullscreen,
-                  pauseUponEnteringBackgroundMode:
-                      Platform.isIOS ? false : true,
-                  resumeUponEnteringForegroundMode: Platform.isIOS,
-                ),
-                ),
+                _player.buildVideoWidget(),
                 if (!_hasOpened)
                   Positioned.fill(
                     child: _buildCover(task),
@@ -343,65 +388,6 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _enterFullscreen() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      return defaultEnterNativeFullscreen();
-    }
-
-    final mode = settingsState.settings.value.fullscreenOrientationMode;
-    final isPortrait = _lastOrientation == Orientation.portrait;
-    final w = _player.state.width ?? 0;
-    final h = _player.state.height ?? 0;
-    final isLandscapeVideo = w > 0 && h > 0 && w >= h;
-
-    final orientations = switch (mode) {
-      FullscreenOrientationMode.keepCurrent => isPortrait
-          ? <DeviceOrientation>[DeviceOrientation.portraitUp]
-          : <DeviceOrientation>[
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ],
-      FullscreenOrientationMode.portrait => <DeviceOrientation>[
-          DeviceOrientation.portraitUp,
-        ],
-      FullscreenOrientationMode.landscape => <DeviceOrientation>[
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ],
-      FullscreenOrientationMode.byVideoSize => isLandscapeVideo
-          ? <DeviceOrientation>[
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ]
-          : <DeviceOrientation>[DeviceOrientation.portraitUp],
-    };
-
-    await Future.wait(
-      [
-        SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.immersiveSticky,
-          overlays: const [],
-        ),
-        SystemChrome.setPreferredOrientations(orientations),
-      ],
-    );
-  }
-
-  Future<void> _exitFullscreen() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      return defaultExitNativeFullscreen();
-    }
-    await Future.wait(
-      [
-        SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.manual,
-          overlays: SystemUiOverlay.values,
-        ),
-        SystemChrome.setPreferredOrientations(const []),
-      ],
     );
   }
 

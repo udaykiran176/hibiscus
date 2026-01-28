@@ -5,6 +5,7 @@ use crate::core::{network, parser, runtime, storage};
 use crate::frb_generated::StreamSink;
 use flutter_rust_bridge::frb;
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use tokio::sync::broadcast;
@@ -71,7 +72,10 @@ pub async fn add_download(
                     storage::DownloadStatus::Queued,
                     None,
                 )?;
-                spawn_download(record.video_id, PathBuf::from(save_path));
+                let hint = basename(&save_path)
+                    .and_then(|name| resolve_download_path(&name).ok())
+                    .unwrap_or_else(PathBuf::new);
+                spawn_download(record.video_id, hint);
             }
         }
         return Ok(task);
@@ -96,13 +100,22 @@ pub async fn add_download(
     storage::update_download_status(&video_id, storage::DownloadStatus::Queued, None)?;
 
     spawn_download(video_id.clone(), PathBuf::new());
+    if let Ok(Some(record)) = storage::get_download_by_video_id(&video_id) {
+        return Ok(map_record(record));
+    }
 
-    let task = ApiDownloadTask {
+    Ok(ApiDownloadTask {
         id: video_id.clone(),
         video_id,
         title,
         cover_url,
-        cover_path,
+        cover_path: cover_path.as_deref().and_then(|p| {
+            basename(p).and_then(|name| {
+                resolve_under_data_dir("download_covers", &name)
+                    .ok()
+                    .map(|p| p.to_string_lossy().into_owned())
+            })
+        }),
         author_id: None,
         author_name: None,
         author_avatar_url: None,
@@ -118,8 +131,7 @@ pub async fn add_download(
         created_at: chrono::Utc::now().timestamp(),
         file_path: None,
         folder_id: None,
-    };
-    Ok(task)
+    })
 }
 
 /// 获取所有下载任务
@@ -164,7 +176,10 @@ pub async fn resume_download(task_id: String) -> anyhow::Result<bool> {
     storage::update_download_status(&task_id, storage::DownloadStatus::Queued, None)?;
     if let Ok(Some(record)) = storage::get_download_by_video_id(&task_id) {
         if let Some(save_path) = record.save_path.clone() {
-            spawn_download(record.video_id, PathBuf::from(save_path));
+            let hint = basename(&save_path)
+                .and_then(|name| resolve_download_path(&name).ok())
+                .unwrap_or_else(PathBuf::new);
+            spawn_download(record.video_id, hint);
         } else {
             spawn_download(record.video_id, PathBuf::new());
         }
@@ -180,14 +195,20 @@ pub async fn delete_download(task_id: String, delete_file: bool) -> anyhow::Resu
     }
     if delete_file {
         if let Ok(Some(record)) = storage::get_download_by_video_id(&task_id) {
-            if let Some(path) = record.save_path {
-                let _ = std::fs::remove_file(path);
+            if let Some(name) = record.save_path.as_deref().and_then(basename) {
+                if let Ok(path) = resolve_download_path(&name) {
+                    let _ = std::fs::remove_file(path);
+                }
             }
-            if let Some(path) = record.cover_path {
-                let _ = std::fs::remove_file(path);
+            if let Some(name) = record.cover_path.as_deref().and_then(basename) {
+                if let Ok(path) = resolve_under_data_dir("download_covers", &name) {
+                    let _ = std::fs::remove_file(path);
+                }
             }
-            if let Some(path) = record.author_avatar_path {
-                let _ = std::fs::remove_file(path);
+            if let Some(name) = record.author_avatar_path.as_deref().and_then(basename) {
+                if let Ok(path) = resolve_under_data_dir("download_avatars", &name) {
+                    let _ = std::fs::remove_file(path);
+                }
             }
         }
     }
@@ -255,7 +276,7 @@ pub fn export_downloads_to_dir(
                 continue;
             }
 
-            let Some(src_path) = record.save_path.clone() else {
+            let Some(src_name) = record.save_path.as_deref().and_then(basename) else {
                 done_files += 1;
                 let _ = sink.add(ApiExportProgress {
                     total_files,
@@ -268,7 +289,22 @@ pub fn export_downloads_to_dir(
                 });
                 continue;
             };
-            let src_path = PathBuf::from(src_path);
+            let src_path = match resolve_download_path(&src_name) {
+                Ok(p) => p,
+                Err(e) => {
+                    done_files += 1;
+                    let _ = sink.add(ApiExportProgress {
+                        total_files,
+                        done_files,
+                        current_file: Some(record.title),
+                        current_bytes: 0,
+                        current_total_bytes: 0,
+                        done: false,
+                        error: Some(format!("Resolve path failed: {e}")),
+                    });
+                    continue;
+                }
+            };
             let meta = match tokio::fs::metadata(&src_path).await {
                 Ok(m) => m,
                 Err(e) => {
@@ -446,6 +482,13 @@ pub async fn get_local_video_path(video_id: String) -> anyhow::Result<Option<Str
     Ok(record.and_then(|r| {
         if r.status == storage::DownloadStatus::Completed {
             r.save_path
+                .as_deref()
+                .and_then(basename)
+                .and_then(|name| {
+                    resolve_download_path(&name)
+                        .ok()
+                        .map(|p| p.to_string_lossy().into_owned())
+                })
         } else {
             None
         }
@@ -459,8 +502,12 @@ pub(crate) async fn resume_queued_downloads() -> anyhow::Result<()> {
             continue;
         }
 
-        if let Some(path) = record.save_path.clone() {
-            spawn_download(record.video_id, PathBuf::from(path));
+        if let Some(name) = record.save_path.as_deref().and_then(basename) {
+            if let Ok(path) = resolve_download_path(&name) {
+                spawn_download(record.video_id, path);
+            } else {
+                spawn_download(record.video_id, PathBuf::new());
+            }
         } else {
             spawn_download(record.video_id, PathBuf::new());
         }
@@ -485,16 +532,35 @@ fn map_record(record: storage::DownloadRecord) -> ApiDownloadTask {
         0.0
     };
 
+    let file_path = record.save_path.as_deref().and_then(|p| {
+        let name = basename(p)?;
+        resolve_download_path(&name)
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    });
+    let cover_path = record.cover_path.as_deref().and_then(|p| {
+        let name = basename(p)?;
+        resolve_under_data_dir("download_covers", &name)
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    });
+    let author_avatar_path = record.author_avatar_path.as_deref().and_then(|p| {
+        let name = basename(p)?;
+        resolve_under_data_dir("download_avatars", &name)
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned())
+    });
+
     ApiDownloadTask {
         id: record.video_id.clone(),
         video_id: record.video_id,
         title: record.title,
         cover_url: record.cover_url,
-        cover_path: record.cover_path,
+        cover_path,
         author_id: record.author_id,
         author_name: record.author_name,
         author_avatar_url: record.author_avatar_url,
-        author_avatar_path: record.author_avatar_path,
+        author_avatar_path,
         quality: record.quality.unwrap_or_else(|| "1080P".to_string()),
         description: record.description,
         tags: record.tags,
@@ -504,19 +570,36 @@ fn map_record(record: storage::DownloadRecord) -> ApiDownloadTask {
         total_bytes: record.total_bytes as u64,
         speed: 0,
         created_at: record.created_at,
-        file_path: record.save_path,
+        file_path,
         folder_id: record.folder_id,
     }
 }
 
-fn build_download_path(video_id: &str, quality: &str, ext: &str) -> anyhow::Result<PathBuf> {
+fn build_download_filename(video_id: &str, quality: &str, ext: &str) -> String {
+    format!("{}_{}.{}", video_id, quality.replace(' ', ""), ext)
+}
+
+fn resolve_download_path(file_name: &str) -> anyhow::Result<PathBuf> {
     let mut base = storage::get_data_dir()?;
     base.push("downloads");
     std::fs::create_dir_all(&base)?;
-
-    let file_name = format!("{}_{}.{}", video_id, quality.replace(' ', ""), ext);
     base.push(file_name);
     Ok(base)
+}
+
+fn resolve_under_data_dir(subdir: &str, file_name: &str) -> anyhow::Result<PathBuf> {
+    let mut base = storage::get_data_dir()?;
+    base.push(subdir);
+    std::fs::create_dir_all(&base)?;
+    base.push(file_name);
+    Ok(base)
+}
+
+fn basename(path: &str) -> Option<String> {
+    Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
 }
 
 async fn download_author_avatar(
@@ -546,14 +629,15 @@ async fn download_author_avatar(
             _ => "jpg".to_string(),
         }
     };
-    let mut file_path = dir;
     // 以 video_id 作为文件名的一部分，保证“与视频绑定”，删除下载时易于清理且避免冲突。
-    file_path.push(format!("{}_{}.{}", video_id, author_id, ext));
+    let file_name = format!("{}_{}.{}", video_id, author_id, ext);
+    let mut file_path = dir;
+    file_path.push(&file_name);
 
     let client = network::get_client();
     let bytes = client.get(avatar_url).send().await?.bytes().await?;
     tokio::fs::write(&file_path, &bytes).await?;
-    Ok(Some(file_path.to_string_lossy().to_string()))
+    Ok(Some(file_name))
 }
 
 async fn download_cover(video_id: &str, cover_url: &str) -> anyhow::Result<Option<String>> {
@@ -579,13 +663,14 @@ async fn download_cover(video_id: &str, cover_url: &str) -> anyhow::Result<Optio
             _ => "jpg".to_string(),
         }
     };
+    let file_name = format!("{}.{}", video_id, ext);
     let mut file_path = dir;
-    file_path.push(format!("{}.{}", video_id, ext));
+    file_path.push(&file_name);
 
     let client = network::get_client();
     let bytes = client.get(cover_url).send().await?.bytes().await?;
     tokio::fs::write(&file_path, &bytes).await?;
-    Ok(Some(file_path.to_string_lossy().to_string()))
+    Ok(Some(file_name))
 }
 
 fn spawn_download(video_id: String, save_path_hint: PathBuf) {
@@ -727,11 +812,14 @@ async fn run_download(
     };
 
     let save_path = if save_path_hint.as_os_str().is_empty() {
-        let p = build_download_path(&video_id, &quality, ext)?;
-        storage::update_download_save_path(&video_id, p.to_string_lossy().as_ref())?;
-        p
-    } else {
+        let file_name = build_download_filename(&video_id, &quality, ext);
+        storage::update_download_save_path(&video_id, &file_name)?;
+        resolve_download_path(&file_name)?
+    } else if save_path_hint.is_absolute() {
         save_path_hint
+    } else {
+        // 兼容：若传入的是文件名（相对路径），统一解析到 downloads 目录。
+        resolve_download_path(&save_path_hint.to_string_lossy())?
     };
 
     storage::update_download_status(&video_id, storage::DownloadStatus::Downloading, None)?;

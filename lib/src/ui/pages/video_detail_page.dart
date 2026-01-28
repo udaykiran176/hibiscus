@@ -1,12 +1,9 @@
 // 视频详情页
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/router/router.dart';
 import 'package:hibiscus/src/rust/api/video.dart' as video_api;
@@ -20,6 +17,7 @@ import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/ui/pages/login_page.dart';
 import 'package:hibiscus/src/ui/widgets/cached_image.dart' as rust_image;
 import 'package:hibiscus/src/services/webdav_sync_service.dart';
+import 'package:hibiscus/src/services/player/player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 视频详情状态
@@ -75,7 +73,10 @@ class _VideoDetailState {
 class VideoDetailPage extends StatefulWidget {
   final String videoId;
 
-  const VideoDetailPage({super.key, required this.videoId});
+  const VideoDetailPage({
+    super.key,
+    required this.videoId,
+  });
 
   @override
   State<VideoDetailPage> createState() => _VideoDetailPageState();
@@ -83,18 +84,17 @@ class VideoDetailPage extends StatefulWidget {
 
 class _VideoDetailPageState extends State<VideoDetailPage> {
   final _state = _VideoDetailState();
-  late final Player _player;
-  late final VideoController _controller;
+  late final PlayerService _player;
   bool _hasOpened = false;
   Orientation _lastOrientation = Orientation.portrait;
+  bool _didInitialResumeSeek = false;
 
   final _comments = signal<List<ApiComment>>([]);
   final _isCommentsLoading = signal(false);
   final _commentsError = signal<String?>(null);
   final _commentController = TextEditingController();
 
-  StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration>? _durSub;
+  StreamSubscription<PlayerState>? _stateSub;
   Timer? _historyTimer;
   Duration _lastPos = Duration.zero;
   Duration _lastDur = Duration.zero;
@@ -109,16 +109,23 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   @override
   void initState() {
     super.initState();
-    _player = Player();
-    _controller = VideoController(_player);
-    _loadDetail(autoPlay: settingsState.settings.value.autoPlay);
+    // 使用单例管理器获取播放器，避免重复创建
+    _player = PlayerManager.instance.acquire();
+    _setupPlayerListeners();
+    _loadDetail(autoPlay: true);
 
-    _posSub = _player.stream.position.listen((d) => _lastPos = d);
-    _durSub = _player.stream.duration.listen((d) => _lastDur = d);
     _historyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _flushHistory());
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WebDavSyncService.autoSyncIfNeeded(context: context);
+    });
+  }
+
+  void _setupPlayerListeners() {
+    _stateSub = _player.stateStream.listen((state) {
+      _lastPos = state.position;
+      _lastDur = state.duration;
+      if (mounted) setState(() {});
     });
   }
 
@@ -127,11 +134,13 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     _flushHistory(force: true);
     WebDavSyncService.autoSyncIfNeeded();
     _historyTimer?.cancel();
-    _posSub?.cancel();
-    _durSub?.cancel();
+    _stateSub?.cancel();
     _state.reset();
     _commentController.dispose();
-    _player.dispose();
+    
+    // 释放播放器引用（单例管理）
+    PlayerManager.instance.release();
+    
     super.dispose();
   }
 
@@ -254,11 +263,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
     }
     _state.videoUrl.value = url;
     debugPrint('Opening video URL: $url');
-    _hasOpened = true;
-    await _player.open(
-      Media(url, httpHeaders: _kDefaultHeaders),
-      play: true,
-    );
+    _didInitialResumeSeek = false;
+    
+    // 先设置 _hasOpened 并更新 UI，移除封面
+    if (!_hasOpened) {
+      _hasOpened = true;
+      if (mounted) setState(() {});
+    }
+    
+    await _player.openUrl(url, headers: _kDefaultHeaders, autoPlay: true);
   }
 
   Future<void> _playSelectedQuality(ApiVideoDetail detail) async {
@@ -272,12 +285,66 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
       );
       return;
     }
-    await _openUrl(url);
+    // 切换清晰度时优先保持当前进度；首次播放则尝试从历史记录恢复。
+    final currentPos = _lastPos;
+    final seekFromCurrent =
+        currentPos > Duration.zero ? currentPos : await _loadResumePosition(detail.id);
+    await _openUrlWithResume(url, seekFromCurrent);
+  }
+
+  Future<Duration?> _loadResumePosition(String videoId) async {
+    try {
+      final history = await user_api.getVideoProgress(videoId: videoId);
+      if (history == null) return null;
+      final duration = history.duration;
+      if (duration <= 0) return null;
+      final seconds = (history.progress.clamp(0.0, 1.0) * duration).round();
+      if (seconds < 3) return null;
+      if (seconds >= duration - 3) return null;
+      return Duration(seconds: seconds);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _openUrlWithResume(String url, Duration? resumeAt) async {
+    if (resumeAt == null) {
+      await _openUrl(url);
+      return;
+    }
+    if (_state.videoUrl.value == url && _didInitialResumeSeek) {
+      await _player.play();
+      return;
+    }
+
+    _state.videoUrl.value = url;
+    debugPrint('Opening video URL: $url (resume at ${resumeAt.inSeconds}s)');
+    _didInitialResumeSeek = true;
+    
+    // 先设置 _hasOpened 并更新 UI，移除封面
+    if (!_hasOpened) {
+      _hasOpened = true;
+      if (mounted) setState(() {});
+    }
+    
+    await _player.openUrl(
+      url,
+      headers: _kDefaultHeaders,
+      autoPlay: true,
+      startPosition: resumeAt,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     _lastOrientation = MediaQuery.of(context).orientation;
+    // 更新播放器方向
+    if (_player is MediaKitPlayer) {
+      (_player as MediaKitPlayer).updateOrientation(_lastOrientation);
+    } else if (_player is BetterPlayerAdapter) {
+      (_player as BetterPlayerAdapter).updateOrientation(_lastOrientation);
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -293,6 +360,12 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         ),
         actions: [
           _buildQualityAction(),
+          if (_player.supportsPictureInPicture)
+            IconButton(
+              icon: const Icon(Icons.picture_in_picture_alt),
+              tooltip: '画中画',
+              onPressed: () => _player.enterPictureInPicture(),
+            ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: '分享',
@@ -353,7 +426,7 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => _loadDetail(autoPlay: settingsState.settings.value.autoPlay),
+              onPressed: () => _loadDetail(autoPlay: true),
               icon: const Icon(Icons.refresh),
               label: const Text('重试'),
             ),
@@ -631,114 +704,42 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
   }
 
   Widget _buildPlayer(BuildContext context, ApiVideoDetail detail) {
+    final state = _player.currentState;
+    final isPlaying = state.isPlaying;
+
     return AspectRatio(
       aspectRatio: 16 / 9,
       child: Stack(
         fit: StackFit.expand,
         children: [
           // 视频区域
-          Container(
-            color: Colors.black,
-            child: Video(
-              controller: _controller,
-              onEnterFullscreen: _enterFullscreen,
-              onExitFullscreen: _exitFullscreen,
-              pauseUponEnteringBackgroundMode: Platform.isIOS ? false : true,
-              resumeUponEnteringForegroundMode: Platform.isIOS,
-            ),
-          ),
+          _player.buildVideoWidget(),
+
           // 封面占位
-          StreamBuilder<bool>(
-            stream: _player.stream.playing,
-            builder: (context, snapshot) {
-              final isPlaying = snapshot.data ?? false;
-              if (_hasOpened || isPlaying || detail.coverUrl.isEmpty) {
-                return const SizedBox();
-              }
-              return GestureDetector(
-                onTap: () async {
-                  await _playSelectedQuality(detail);
-                },
-	                child: Stack(children: [                
-	                Positioned.fill(
-	                  child: rust_image.CachedNetworkImage(
-	                    imageUrl: detail.coverUrl,
-	                    fit: BoxFit.cover,
-	                    errorWidget: const SizedBox(),
-	                  ),
-	                ),
-	                Center(
-	                  child: Icon(
-                          isPlaying ? Icons.pause : Icons.play_arrow,
-                          size: 48,
-                          color: Colors.white.withOpacity(0.9),
-                        ),      
-                                  ),
-              ])
-              );
-            },
-          ),
+          if (!_hasOpened)
+            GestureDetector(
+              onTap: () async {
+                await _playSelectedQuality(detail);
+              },
+              child: Stack(children: [
+                Positioned.fill(
+                  child: rust_image.CachedNetworkImage(
+                    imageUrl: detail.coverUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: const SizedBox(),
+                  ),
+                ),
+                Center(
+                  child: Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    size: 48,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+              ]),
+            ),
         ],
       ),
-    );
-  }
-
-  Future<void> _enterFullscreen() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      return defaultEnterNativeFullscreen();
-    }
-
-    final mode = settingsState.settings.value.fullscreenOrientationMode;
-    final isPortrait = _lastOrientation == Orientation.portrait;
-    final w = _player.state.width ?? 0;
-    final h = _player.state.height ?? 0;
-    final isLandscapeVideo = w > 0 && h > 0 && w >= h;
-
-    final orientations = switch (mode) {
-      FullscreenOrientationMode.keepCurrent => isPortrait
-          ? <DeviceOrientation>[DeviceOrientation.portraitUp]
-          : <DeviceOrientation>[
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ],
-      FullscreenOrientationMode.portrait => <DeviceOrientation>[
-          DeviceOrientation.portraitUp,
-        ],
-      FullscreenOrientationMode.landscape => <DeviceOrientation>[
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ],
-      FullscreenOrientationMode.byVideoSize => isLandscapeVideo
-          ? <DeviceOrientation>[
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ]
-          : <DeviceOrientation>[DeviceOrientation.portraitUp],
-    };
-
-    await Future.wait(
-      [
-        SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.immersiveSticky,
-          overlays: const [],
-        ),
-        SystemChrome.setPreferredOrientations(orientations),
-      ],
-    );
-  }
-
-  Future<void> _exitFullscreen() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      return defaultExitNativeFullscreen();
-    }
-    await Future.wait(
-      [
-        SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.manual,
-          overlays: SystemUiOverlay.values,
-        ),
-        SystemChrome.setPreferredOrientations(const []),
-      ],
     );
   }
 
@@ -832,15 +833,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                                   )
                                 : null,
                           ),
-	                          child: video.coverUrl.isNotEmpty
-	                              ? rust_image.CachedNetworkImage(
-	                                  imageUrl: video.coverUrl,
-	                                  fit: BoxFit.cover,
-	                                  borderRadius: BorderRadius.circular(6),
-	                                )
-	                              : Center(
-	                                  child: Text(video.episode),
-	                                ),
+                          child: video.coverUrl.isNotEmpty
+                              ? rust_image.CachedNetworkImage(
+                                  imageUrl: video.coverUrl,
+                                  fit: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(6),
+                                )
+                              : Center(
+                                  child: Text(video.episode),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -879,15 +880,15 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
                 color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-	              child: video.coverUrl.isNotEmpty
-	                  ? rust_image.CachedNetworkImage(
-	                      imageUrl: video.coverUrl,
-	                      fit: BoxFit.cover,
-	                      borderRadius: BorderRadius.circular(8),
-	                    )
-	                  : const Icon(Icons.video_library_outlined),
-	            ),
-	          ),
+              child: video.coverUrl.isNotEmpty
+                  ? rust_image.CachedNetworkImage(
+                      imageUrl: video.coverUrl,
+                      fit: BoxFit.cover,
+                      borderRadius: BorderRadius.circular(8),
+                    )
+                  : const Icon(Icons.video_library_outlined),
+            ),
+          ),
           title: Text(
             video.title,
             maxLines: 2,
