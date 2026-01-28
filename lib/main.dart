@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:hibiscus/src/rust/frb_generated.dart';
@@ -15,13 +17,10 @@ import 'package:hibiscus/src/services/app_logger.dart';
 import 'package:hibiscus/src/services/webdav_sync_service.dart';
 
 Future<void> main() async {
-  runZonedGuarded(
-    () {
-      WidgetsFlutterBinding.ensureInitialized();
-      runApp(const AppEntry());
-    },
-    (error, stack) => AppLogger.error('zone', error.toString(), stack: stack),
-  );
+  runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
+    runApp(const AppEntry());
+  }, (error, stack) => AppLogger.error('zone', error.toString(), stack: stack));
 }
 
 class AppEntry extends StatefulWidget {
@@ -95,13 +94,41 @@ class InitializationPage extends StatelessWidget {
   }
 }
 
-class HibiscusApp extends StatelessWidget {
+class HibiscusApp extends StatefulWidget {
   const HibiscusApp({super.key});
+
+  @override
+  State<HibiscusApp> createState() => _HibiscusAppState();
+}
+
+class _HibiscusAppState extends State<HibiscusApp> {
+  AppOrientation? _lastOrientation;
+
+  List<DeviceOrientation> _deviceOrientations(AppOrientation orientation) {
+    return switch (orientation) {
+      AppOrientation.portrait => [DeviceOrientation.portraitUp],
+      AppOrientation.landscape => [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ],
+      AppOrientation.automatic => const [],
+    };
+  }
+
+  void _applyOrientation(AppOrientation orientation) {
+    if (!(Platform.isAndroid || Platform.isIOS)) return;
+    if (_lastOrientation == orientation) return;
+    _lastOrientation = orientation;
+    final orientations = _deviceOrientations(orientation);
+    SystemChrome.setPreferredOrientations(orientations);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final mode = settingsState.settings.value.themeMode;
+      final orientation = settingsState.settings.value.appOrientation;
+      _applyOrientation(orientation);
       return MaterialApp(
         title: 'Hibiscus',
         debugShowCheckedModeBanner: false,

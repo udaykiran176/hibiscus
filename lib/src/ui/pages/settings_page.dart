@@ -76,6 +76,13 @@ class _SettingsPageState extends State<SettingsPage> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showThemeModePicker(context, settings.themeMode),
             ),
+            ListTile(
+              title: const Text('屏幕方向'),
+              subtitle: Text(_appOrientationLabel(settings.appOrientation)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  _showAppOrientationPicker(context, settings.appOrientation),
+            ),
             const Divider(),
             _SectionHeader(title: '导航'),
             ListTile(
@@ -402,6 +409,38 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: (value) {
                 if (value == null) return;
                 settingsState.setFullscreenOrientationMode(value);
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  String _appOrientationLabel(AppOrientation orientation) {
+    return switch (orientation) {
+      AppOrientation.automatic => '自动',
+      AppOrientation.portrait => '竖屏',
+      AppOrientation.landscape => '横屏',
+    };
+  }
+
+  void _showAppOrientationPicker(BuildContext context, AppOrientation current) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('屏幕方向'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppOrientation.values.map((orientation) {
+            return RadioListTile<AppOrientation>(
+              title: Text(_appOrientationLabel(orientation)),
+              value: orientation,
+              groupValue: current,
+              onChanged: (value) {
+                if (value == null) return;
+                settingsState.setAppOrientation(value);
                 Navigator.pop(context);
               },
             );

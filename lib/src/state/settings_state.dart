@@ -9,11 +9,9 @@ import 'package:hibiscus/src/rust/api/settings.dart' as rust_settings;
 import 'package:hibiscus/src/services/player/player_service.dart';
 
 /// 应用设置
-enum NavigationType {
-  adaptive,
-  bottom,
-  sidebar,
-}
+enum NavigationType { adaptive, bottom, sidebar }
+
+enum AppOrientation { automatic, portrait, landscape }
 
 class AppSettings {
   final ThemeMode themeMode;
@@ -27,7 +25,8 @@ class AppSettings {
   final bool enableProxy;
   final PlayerType preferredPlayerType;
   final NavigationType navigationType;
-  
+  final AppOrientation appOrientation;
+
   const AppSettings({
     this.themeMode = ThemeMode.system,
     this.maxConcurrentDownloads = 1,
@@ -40,6 +39,7 @@ class AppSettings {
     this.enableProxy = false,
     this.preferredPlayerType = PlayerType.betterPlayer,
     this.navigationType = NavigationType.adaptive,
+    this.appOrientation = AppOrientation.automatic,
   });
 
   /// 获取实际使用的播放器类型（PC 端强制 mediaKit）
@@ -49,7 +49,7 @@ class AppSettings {
     }
     return PlayerType.mediaKit;
   }
-  
+
   AppSettings copyWith({
     ThemeMode? themeMode,
     int? maxConcurrentDownloads,
@@ -62,23 +62,27 @@ class AppSettings {
     bool? enableProxy,
     PlayerType? preferredPlayerType,
     NavigationType? navigationType,
+    AppOrientation? appOrientation,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
-      maxConcurrentDownloads: maxConcurrentDownloads ?? this.maxConcurrentDownloads,
+      maxConcurrentDownloads:
+          maxConcurrentDownloads ?? this.maxConcurrentDownloads,
       defaultVolume: defaultVolume ?? this.defaultVolume,
       hardwareAcceleration: hardwareAcceleration ?? this.hardwareAcceleration,
       defaultPlayQuality: defaultPlayQuality ?? this.defaultPlayQuality,
-      defaultDownloadQuality: defaultDownloadQuality ?? this.defaultDownloadQuality,
+      defaultDownloadQuality:
+          defaultDownloadQuality ?? this.defaultDownloadQuality,
       fullscreenOrientationMode:
           fullscreenOrientationMode ?? this.fullscreenOrientationMode,
       proxyUrl: proxyUrl ?? this.proxyUrl,
       enableProxy: enableProxy ?? this.enableProxy,
       preferredPlayerType: preferredPlayerType ?? this.preferredPlayerType,
       navigationType: navigationType ?? this.navigationType,
+      appOrientation: appOrientation ?? this.appOrientation,
     );
   }
-  
+
   Map<String, dynamic> toJson() => {
     'themeMode': themeMode.index,
     'maxConcurrentDownloads': maxConcurrentDownloads,
@@ -91,25 +95,33 @@ class AppSettings {
     'enableProxy': enableProxy,
     'preferredPlayerType': preferredPlayerType.index,
     'navigationType': navigationType.index,
+    'appOrientation': appOrientation.index,
   };
-  
+
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     int clampConcurrent(dynamic v) {
       final parsed = (v is num) ? v.toInt() : int.tryParse('$v');
       return (parsed ?? 1).clamp(1, 2);
     }
+
     FullscreenOrientationMode parseFullscreenMode(dynamic v) {
       final parsed = (v is num) ? v.toInt() : int.tryParse('$v');
-      final idx = (parsed ?? FullscreenOrientationMode.landscape.index)
-          .clamp(0, FullscreenOrientationMode.values.length - 1);
+      final idx = (parsed ?? FullscreenOrientationMode.landscape.index).clamp(
+        0,
+        FullscreenOrientationMode.values.length - 1,
+      );
       return FullscreenOrientationMode.values[idx];
     }
+
     int parsePlayerType(dynamic v) {
       final parsed = (v is num) ? v.toInt() : int.tryParse('$v');
-      final idx = (parsed ?? PlayerType.mediaKit.index)
-          .clamp(0, PlayerType.values.length - 1);
+      final idx = (parsed ?? PlayerType.mediaKit.index).clamp(
+        0,
+        PlayerType.values.length - 1,
+      );
       return idx;
     }
+
     return AppSettings(
       themeMode: ThemeMode.values[json['themeMode'] ?? 0],
       maxConcurrentDownloads: clampConcurrent(json['maxConcurrentDownloads']),
@@ -117,26 +129,28 @@ class AppSettings {
       hardwareAcceleration: json['hardwareAcceleration'] ?? true,
       defaultPlayQuality: json['defaultPlayQuality'] ?? '1080P',
       defaultDownloadQuality: json['defaultDownloadQuality'] ?? '1080P',
-      fullscreenOrientationMode:
-          parseFullscreenMode(json['fullscreenOrientationMode']),
+      fullscreenOrientationMode: parseFullscreenMode(
+        json['fullscreenOrientationMode'],
+      ),
       proxyUrl: json['proxyUrl'],
       enableProxy: json['enableProxy'] ?? false,
-      preferredPlayerType: PlayerType.values[parsePlayerType(json['preferredPlayerType'])],
-      navigationType: NavigationType.values[
-          (json['navigationType'] is int
+      preferredPlayerType:
+          PlayerType.values[parsePlayerType(json['preferredPlayerType'])],
+      navigationType:
+          NavigationType.values[(json['navigationType'] is int
                   ? json['navigationType']
                   : NavigationType.adaptive.index)
               .clamp(0, NavigationType.values.length - 1)],
+      appOrientation:
+          AppOrientation.values[(json['appOrientation'] is int
+                  ? json['appOrientation']
+                  : AppOrientation.automatic.index)
+              .clamp(0, AppOrientation.values.length - 1)],
     );
   }
 }
 
-enum FullscreenOrientationMode {
-  keepCurrent,
-  portrait,
-  landscape,
-  byVideoSize,
-}
+enum FullscreenOrientationMode { keepCurrent, portrait, landscape, byVideoSize }
 
 /// 设置状态
 class SettingsState {
@@ -144,45 +158,47 @@ class SettingsState {
   static final SettingsState _instance = SettingsState._();
   factory SettingsState() => _instance;
   SettingsState._();
-  
+
   // 当前设置
   final settings = signal(const AppSettings());
-  
+
   // 是否已初始化
   final _initialized = signal(false);
-  
+
   /// 主题模式
   ThemeMode get themeMode => settings.value.themeMode;
-  
+
   /// 初始化设置
   Future<void> init() async {
     if (_initialized.value) return;
-    
+
     try {
       final jsonStr = await rust_settings.getFlutterSettings();
       if (jsonStr != null && jsonStr.isNotEmpty) {
-        settings.value = AppSettings.fromJson(jsonDecode(jsonStr) as Map<String, dynamic>);
+        settings.value = AppSettings.fromJson(
+          jsonDecode(jsonStr) as Map<String, dynamic>,
+        );
       }
-      
+
       _initialized.value = true;
     } catch (e) {
       // 使用默认设置
       _initialized.value = true;
     }
   }
-  
+
   /// 更新设置
   Future<void> update(AppSettings newSettings) async {
     settings.value = newSettings;
     await _save();
   }
-  
+
   /// 设置主题模式
   Future<void> setThemeMode(ThemeMode mode) async {
     settings.value = settings.value.copyWith(themeMode: mode);
     await _save();
   }
-  
+
   /// 设置下载路径
   /// 设置最大并发下载数
   Future<void> setMaxConcurrentDownloads(int max) async {
@@ -195,7 +211,7 @@ class SettingsState {
       // ignore
     }
   }
-  
+
   Future<void> setDefaultPlayQuality(String quality) async {
     settings.value = settings.value.copyWith(defaultPlayQuality: quality);
     await _save();
@@ -207,23 +223,25 @@ class SettingsState {
     await _save();
   }
 
-  Future<void> setFullscreenOrientationMode(FullscreenOrientationMode mode) async {
+  Future<void> setFullscreenOrientationMode(
+    FullscreenOrientationMode mode,
+  ) async {
     settings.value = settings.value.copyWith(fullscreenOrientationMode: mode);
     await _save();
   }
-  
+
   /// 设置默认音量
   Future<void> setDefaultVolume(double volume) async {
     settings.value = settings.value.copyWith(defaultVolume: volume);
     await _save();
   }
-  
+
   /// 设置硬件加速
   Future<void> setHardwareAcceleration(bool enabled) async {
     settings.value = settings.value.copyWith(hardwareAcceleration: enabled);
     await _save();
   }
-  
+
   /// 设置代理
   Future<void> setProxy(String? url, bool enabled) async {
     settings.value = settings.value.copyWith(
@@ -231,8 +249,13 @@ class SettingsState {
       enableProxy: enabled,
     );
     await _save();
-    
+
     // TODO: 通知 Rust 更新代理设置
+  }
+
+  Future<void> setAppOrientation(AppOrientation orientation) async {
+    settings.value = settings.value.copyWith(appOrientation: orientation);
+    await _save();
   }
 
   Future<void> setNavigationType(NavigationType type) async {
@@ -251,7 +274,7 @@ class SettingsState {
     settings.value = const AppSettings();
     await _save();
   }
-  
+
   /// 保存设置到本地存储
   Future<void> _save() async {
     final jsonStr = jsonEncode(settings.value.toJson());
