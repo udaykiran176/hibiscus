@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:hibiscus/src/rust/frb_generated.dart';
 import 'package:hibiscus/src/rust/api/init.dart' as init_api;
@@ -73,13 +74,19 @@ class InitializationPage extends StatelessWidget {
       darkTheme: AppTheme.dark,
       home: Scaffold(
         appBar: AppBar(title: const Text('Hibiscus')),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 12),
-              Text('正在初始化...'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              SvgPicture.asset(
+                'assets/images/android_adaptive_foreground.svg',
+                width: 80,
+                height: 80,
+              ),
+              const SizedBox(height: 12),
+              const Text('正在初始化...'),
             ],
           ),
         ),
