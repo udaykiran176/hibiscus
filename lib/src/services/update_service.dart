@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:hibiscus/src/services/app_logger.dart';
+import 'package:hibiscus/src/services/rust_kv_store.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -242,13 +242,11 @@ Future<String> _getCurrentAppVersion() async {
 }
 
 Future<String> _loadProperty(String key) async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString(key) ?? '';
+  return (await RustKvStore.getString(key)) ?? '';
 }
 
 Future<void> _saveProperty(String key, String value) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(key, value);
+  await RustKvStore.setString(key, value);
 }
 
 Future<void> _showUpdateAvailableDialog(

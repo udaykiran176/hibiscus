@@ -40,6 +40,18 @@ Future<String?> getFlutterSettings() =>
 Future<bool> saveFlutterSettings({required String json}) =>
     RustLib.instance.api.crateApiSettingsSaveFlutterSettings(json: json);
 
+/// 通用 KV：读取 settings 表中的字符串值
+Future<String?> getKv({required String key}) =>
+    RustLib.instance.api.crateApiSettingsGetKv(key: key);
+
+/// 通用 KV：写入 settings 表中的字符串值
+Future<bool> setKv({required String key, required String value}) =>
+    RustLib.instance.api.crateApiSettingsSetKv(key: key, value: value);
+
+/// 通用 KV：删除 settings 表中的键
+Future<bool> deleteKv({required String key}) =>
+    RustLib.instance.api.crateApiSettingsDeleteKv(key: key);
+
 /// 获取缓存大小
 Future<CacheInfo> getCacheSize() =>
     RustLib.instance.api.crateApiSettingsGetCacheSize();

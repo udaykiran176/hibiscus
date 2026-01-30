@@ -83,6 +83,26 @@ pub async fn save_flutter_settings(json: String) -> anyhow::Result<bool> {
     Ok(true)
 }
 
+/// 通用 KV：读取 settings 表中的字符串值
+#[frb]
+pub async fn get_kv(key: String) -> anyhow::Result<Option<String>> {
+    Ok(storage::get_setting(&key)?)
+}
+
+/// 通用 KV：写入 settings 表中的字符串值
+#[frb]
+pub async fn set_kv(key: String, value: String) -> anyhow::Result<bool> {
+    storage::save_setting(&key, &value)?;
+    Ok(true)
+}
+
+/// 通用 KV：删除 settings 表中的键
+#[frb]
+pub async fn delete_kv(key: String) -> anyhow::Result<bool> {
+    storage::delete_setting(&key)?;
+    Ok(true)
+}
+
 /// 获取缓存大小
 #[frb]
 pub async fn get_cache_size() -> anyhow::Result<CacheInfo> {

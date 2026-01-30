@@ -16,6 +16,8 @@ import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/services/app_logger.dart';
 import 'package:hibiscus/src/services/update_service.dart';
 import 'package:hibiscus/src/services/webdav_sync_service.dart';
+import 'package:hibiscus/browser/browser_state.dart';
+import 'package:hibiscus/browser/browser_entry.dart';
 
 Future<void> main() async {
   runZonedGuarded(() {
@@ -48,6 +50,7 @@ class _AppEntryState extends State<AppEntry> {
     AppLogger.installGlobalHandlers();
     await userState.checkLoginStatus();
     await settingsState.init();
+    await browserState.init();
     MediaKit.ensureInitialized();
     if (!mounted) return;
     setState(() => _initialized = true);
@@ -58,7 +61,11 @@ class _AppEntryState extends State<AppEntry> {
     if (!_initialized) {
       return const InitializationPage();
     }
-    return const HibiscusApp();
+    // 根据激活状态决定入口
+    // 未激活时显示浏览器，激活后显示主应用
+    return BrowserEntry(
+      appBuilder: () => const HibiscusApp(),
+    );
   }
 }
 
