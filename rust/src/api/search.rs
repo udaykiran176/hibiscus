@@ -77,7 +77,7 @@ fn build_search_url(filters: &ApiSearchFilters) -> String {
     url
 }
 
-/// 执行搜索 - 使用 10 分钟缓存
+/// 执行搜索 - 使用缓存
 #[frb]
 pub async fn search(filters: ApiSearchFilters) -> anyhow::Result<ApiSearchResult> {
     let url = build_search_url(&filters);
@@ -375,7 +375,7 @@ pub async fn get_home_videos(page: u32) -> anyhow::Result<ApiSearchResult> {
     .await
 }
 
-/// 获取首页数据（包含各分区）- 使用 10 分钟缓存
+/// 获取首页数据（包含各分区）- 使用缓存
 #[frb]
 pub async fn get_homepage() -> anyhow::Result<ApiHomePage> {
     let cache_key = "HOMEPAGE";

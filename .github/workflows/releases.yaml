@@ -135,6 +135,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           flutter build apk --release \
+            --dart-define=UPDATE_OWNER=${{ github.repository_owner }} \
+            --dart-define=UPDATE_REPO=${{ github.event.repository.name }} \
             --build-name=${{ needs.check-version.outputs.version }} \
             --build-number=${{ needs.check-version.outputs.build-number }}
           echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
@@ -175,6 +177,8 @@ jobs:
       - name: Build Windows
         run: |
           flutter build windows --release `
+            --dart-define=UPDATE_OWNER=${{ github.repository_owner }} `
+            --dart-define=UPDATE_REPO=${{ github.event.repository.name }} `
             --build-name=${{ needs.check-version.outputs.version }} `
             --build-number=${{ needs.check-version.outputs.build-number }}
       
@@ -218,6 +222,8 @@ jobs:
       - name: Build macOS
         run: |
           flutter build macos --release \
+            --dart-define=UPDATE_OWNER=${{ github.repository_owner }} \
+            --dart-define=UPDATE_REPO=${{ github.event.repository.name }} \
             --build-name=${{ needs.check-version.outputs.version }} \
             --build-number=${{ needs.check-version.outputs.build-number }}
       
@@ -267,6 +273,8 @@ jobs:
         run: |
           flutter build ipa --release \
             --no-codesign \
+            --dart-define=UPDATE_OWNER=${{ github.repository_owner }} \
+            --dart-define=UPDATE_REPO=${{ github.event.repository.name }} \
             --build-name=${{ needs.check-version.outputs.version }} \
             --build-number=${{ needs.check-version.outputs.build-number }}
       

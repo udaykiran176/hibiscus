@@ -10,6 +10,7 @@ import 'package:hibiscus/src/ui/pages/home_page.dart';
 import 'package:hibiscus/src/ui/pages/history_page.dart';
 import 'package:hibiscus/src/ui/pages/downloads_page.dart';
 import 'package:hibiscus/src/ui/pages/subscriptions_page.dart';
+import 'package:hibiscus/src/services/update_service.dart';
 import 'package:hibiscus/src/ui/pages/settings_page.dart';
 import 'package:hibiscus/src/state/nav_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
@@ -101,6 +102,7 @@ class _AppShellState extends State<AppShell> {
       // 始终使用 appNavState 中的当前索引，确保布局切换时保持正确的页面
       final currentIndex = appNavState.selectedIndex.value;
       final navigationType = settingsState.settings.value.navigationType;
+      final hasUpdate = updateStatusSignal.value.hasUpdate;
 
       // 确保 PageController 与当前索引同步（布局切换时）
       if (_pageController.hasClients) {
@@ -118,24 +120,24 @@ class _AppShellState extends State<AppShell> {
       final isTablet = Breakpoints.isTablet(context);
 
       if (navigationType == NavigationType.bottom) {
-        return _buildMobileLayout(currentIndex);
+        return _buildMobileLayout(currentIndex, hasUpdate);
       }
 
       if (navigationType == NavigationType.sidebar) {
-        return _buildTabletLayout(currentIndex);
+        return _buildTabletLayout(currentIndex, hasUpdate);
       }
 
       // 自适应（Adaptive）
       if (isDesktop || isTablet) {
-        return _buildTabletLayout(currentIndex);
+        return _buildTabletLayout(currentIndex, hasUpdate);
       }
 
-      return _buildMobileLayout(currentIndex);
+      return _buildMobileLayout(currentIndex, hasUpdate);
     });
   }
 
   /// 平板布局：NavigationRail
-  Widget _buildTabletLayout(int selectedIndex) {
+  Widget _buildTabletLayout(int selectedIndex, bool hasUpdate) {
     return Row(
       key: Key("MAIN_ROW"),
       children: [
@@ -146,8 +148,16 @@ class _AppShellState extends State<AppShell> {
           labelType: NavigationRailLabelType.all,
           destinations: _destinations.map((dest) {
             return NavigationRailDestination(
-              icon: Icon(dest.icon),
-              selectedIcon: Icon(dest.selectedIcon),
+              icon: _decorateNavIcon(
+                dest.icon,
+                hasUpdate,
+                dest.route == AppRoutes.settings,
+              ),
+              selectedIcon: _decorateNavIcon(
+                dest.selectedIcon,
+                hasUpdate,
+                dest.route == AppRoutes.settings,
+              ),
               label: Text(dest.label),
             );
           }).toList(),
@@ -161,7 +171,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   /// 手机布局：底部导航栏
-  Widget _buildMobileLayout(int selectedIndex) {
+  Widget _buildMobileLayout(int selectedIndex, bool hasUpdate) {
     return Row(
       key: Key("MAIN_ROW"),
       children: [
@@ -175,8 +185,16 @@ class _AppShellState extends State<AppShell> {
                   _onDestinationSelected(index, _destinations),
               destinations: _destinations.map((dest) {
                 return NavigationDestination(
-                  icon: Icon(dest.icon),
-                  selectedIcon: Icon(dest.selectedIcon),
+                  icon: _decorateNavIcon(
+                    dest.icon,
+                    hasUpdate,
+                    dest.route == AppRoutes.settings,
+                  ),
+                  selectedIcon: _decorateNavIcon(
+                    dest.selectedIcon,
+                    hasUpdate,
+                    dest.route == AppRoutes.settings,
+                  ),
                   label: dest.label,
                 );
               }).toList(),
@@ -199,6 +217,16 @@ class _AppShellState extends State<AppShell> {
         DownloadsPage(),
         SettingsPage(),
       ],
+    );
+  }
+
+  Widget _decorateNavIcon(IconData iconData, bool hasUpdate, bool isSettings) {
+    final baseIcon = Icon(iconData);
+    if (!hasUpdate || !isSettings) return baseIcon;
+    return Badge(
+      label: const Text('新', style: TextStyle(fontSize: 10)),
+      isLabelVisible: true,
+      child: baseIcon,
     );
   }
 }

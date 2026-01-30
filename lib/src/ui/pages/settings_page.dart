@@ -13,6 +13,7 @@ import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
 import 'package:hibiscus/src/services/log_export_service.dart';
 import 'package:hibiscus/src/services/player/player_service.dart';
+import 'package:hibiscus/src/services/update_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -62,10 +63,26 @@ class _SettingsPageState extends State<SettingsPage> {
         final settings = settingsState.settings.value;
         final loginStatus = userState.loginStatus.value;
         final user = userState.userInfo.value;
+        final updateStatus = updateStatusSignal.value;
+        final updateEnabled = updateCheckEnabled;
 
         return ListView(
           children: [
             _buildUserHeader(context, theme, loginStatus, user),
+            const Divider(),
+            _SectionHeader(title: '更新'),
+            ListTile(
+              title: const Text('检查更新'),
+              subtitle: Text(_updateStatusLabel(updateStatus, updateEnabled)),
+              trailing: Badge(
+                label: const Text('新', style: TextStyle(fontSize: 10)),
+                isLabelVisible: updateEnabled && updateStatus.hasUpdate,
+                child: const Icon(Icons.system_update_alt),
+              ),
+              enabled: updateEnabled,
+              onTap: updateEnabled ? () => manualCheckUpdate(context) : null,
+            ),
+
             const Divider(),
 
             // 外观设置
@@ -487,6 +504,17 @@ class _SettingsPageState extends State<SettingsPage> {
       PlayerType.mediaKit => 'MediaKit（通用）',
       PlayerType.betterPlayer => 'BetterPlayer（支持画中画）',
     };
+  }
+
+  String _updateStatusLabel(UpdateStatus status, bool enabled) {
+    if (!enabled) return '未启用版本检查';
+    if (status.hasUpdate) {
+      return '发现新版本：${status.latestVersion}';
+    }
+    if (status.currentVersion == '-' && status.latestVersion == '-') {
+      return '尚未检查更新';
+    }
+    return '当前：${status.currentVersion}，最新：${status.latestVersion}';
   }
 
   void _showPlayerTypePicker(BuildContext context, PlayerType current) {

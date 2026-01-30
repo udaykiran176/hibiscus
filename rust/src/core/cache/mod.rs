@@ -8,7 +8,7 @@ pub mod web_cache;
 use anyhow::Result;
 
 // 缓存过期时间常量
-pub const WEB_CACHE_EXPIRE_MS: i64 = 10 * 60 * 1000; // 10分钟
+pub const WEB_CACHE_EXPIRE_MS: i64 = 3 * 60 * 1000; // 3分钟
 pub const IMAGE_CACHE_EXPIRE_MS: i64 = 3 * 24 * 60 * 60 * 1000; // 3天
 pub const IMAGE_CACHE_DIR: &str = "image_cache";
 

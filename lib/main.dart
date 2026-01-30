@@ -14,6 +14,7 @@ import 'package:hibiscus/src/state/user_state.dart';
 import 'package:hibiscus/src/state/settings_state.dart';
 import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/services/app_logger.dart';
+import 'package:hibiscus/src/services/update_service.dart';
 import 'package:hibiscus/src/services/webdav_sync_service.dart';
 
 Future<void> main() async {
@@ -121,6 +122,24 @@ class _HibiscusAppState extends State<HibiscusApp> {
     _lastOrientation = orientation;
     final orientations = _deviceOrientations(orientation);
     SystemChrome.setPreferredOrientations(orientations);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigatorContext = appNavigatorKey.currentContext;
+      if (navigatorContext == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final ctx = appNavigatorKey.currentContext;
+          if (ctx != null) maybeAutoCheckUpdate(ctx);
+        });
+        return;
+      }
+      maybeAutoCheckUpdate(navigatorContext);
+    });
   }
 
   @override
