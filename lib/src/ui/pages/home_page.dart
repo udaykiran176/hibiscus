@@ -11,7 +11,17 @@ import 'package:hibiscus/src/rust/api/download.dart' as download_api;
 import 'package:hibiscus/src/ui/widgets/video_card.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  /// 可选的独立搜索状态（用于发现页）
+  final SearchState? searchState;
+  
+  /// 页面标题（用于发现页）
+  final String? title;
+  
+  const HomePage({
+    super.key,
+    this.searchState,
+    this.title,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -19,56 +29,77 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
+  late final SearchState _searchState;
 
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => widget.searchState == null; // 仅全局状态保持活动
 
   @override
   void initState() {
     super.initState();
+    // 使用传入的状态或全局状态
+    _searchState = widget.searchState ?? searchState;
     // 加载首页数据
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
-    await searchState.init();
-    await searchState.loadFilterOptions();
-    _searchController.text = searchState.filters.value?.query ?? '';
+    await _searchState.init();
+    await _searchState.loadFilterOptions();
+    _searchController.text = _searchState.filters.value?.query ?? '';
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    // 如果是独立实例，清理资源
+    if (widget.searchState != null) {
+      widget.searchState!.dispose();
+    }
     super.dispose();
   }
 
   void _onSearch(String query) {
-    searchState.updateQuery(query);
+    _searchState.updateQuery(query);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     return Watch((context) {
-      final isMultiSelect = searchState.isMultiSelectMode.value;
-      final selectedCount = searchState.selectedVideoIds.value.length;
-      final pagerKey = searchState.filtersKey;
-      final needsCloudflare = searchState.needsCloudflare.value;
+      final isMultiSelect = _searchState.isMultiSelectMode.value;
+      final selectedCount = _searchState.selectedVideoIds.value.length;
+      final pagerKey = _searchState.filtersKey;
+      final needsCloudflare = _searchState.needsCloudflare.value;
 
       return Scaffold(
         appBar: AppBar(
+          // 发现页显示返回按钮
+          leading: widget.searchState != null
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null,
           title: isMultiSelect
               ? Text('已选择 $selectedCount')
-              : _buildSearchField(context),
-          titleSpacing: 16,
+              : widget.title != null
+                  ? Text(widget.title!)
+                  : _buildSearchField(context),
+          titleSpacing: widget.searchState != null ? null : 16,
         ),
         body: Column(
           children: [
+            // 发现页顶部显示搜索框（如果有标题）
+            if (widget.title != null && widget.searchState != null)
+              _buildSearchField(context),
+            
             // 过滤条件栏
             FilterBar(
+              searchState: _searchState,
               onEnterMultiSelect: () {
                 FocusScope.of(context).unfocus();
-                searchState.enterMultiSelect(
+                _searchState.enterMultiSelect(
                   defaultQuality: settingsState.settings.value.defaultDownloadQuality,
                 );
               },
@@ -82,16 +113,16 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                   : VideoPager(
                       key: ValueKey(pagerKey),
                       pageLoader: (page) async {
-                        final result = await searchState.fetchPage(page: page);
+                        final result = await _searchState.fetchPage(page: page);
                         return VideoPagerPage(
                           videos: result.videos,
                           hasNext: result.hasNext,
                         );
                       },
-                      onItemsChanged: (items) => searchState.videos.value = items,
+                      onItemsChanged: (items) => _searchState.videos.value = items,
                       selectionMode: isMultiSelect,
-                      selectedIds: searchState.selectedVideoIds.value,
-                      onToggleSelect: (video) => searchState.toggleSelected(video.id),
+                      selectedIds: _searchState.selectedVideoIds.value,
+                      onToggleSelect: (video) => _searchState.toggleSelected(video.id),
                       itemBuilder: (context, video, sizeScale, selected, onTap) {
                         return VideoCard(
                           video: video,
@@ -110,7 +141,10 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
   }
 
   Widget _buildSearchField(BuildContext context) {
-    return TextField(
+    final theme = Theme.of(context);
+    
+    // 发现页使用 Container 包裹
+    final searchField = TextField(
       controller: _searchController,
       decoration: InputDecoration(
         hintText: '搜索视频...',
@@ -120,7 +154,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
                 icon: const Icon(Icons.clear),
                 onPressed: () {
                   _searchController.clear();
-                  searchState.reset();
+                  _searchState.reset();
                   setState(() {});
                 },
               )
@@ -133,16 +167,27 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       onSubmitted: _onSearch,
       onChanged: (value) => setState(() {}),
     );
+    
+    // 如果是发现页，添加背景容器
+    if (widget.title != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: theme.colorScheme.surface,
+        child: searchField,
+      );
+    }
+    
+    return searchField;
   }
 
   // VideoPager 已处理错误态与重试按钮
 
   Future<void> _batchDownloadSelected() async {
-    final ids = searchState.selectedVideoIds.value.toList();
+    final ids = _searchState.selectedVideoIds.value.toList();
     if (ids.isEmpty) return;
 
-    final quality = searchState.multiSelectQuality.value;
-    final videosById = {for (final v in searchState.videos.value) v.id: v};
+    final quality = _searchState.multiSelectQuality.value;
+    final videosById = {for (final v in _searchState.videos.value) v.id: v};
 
     int done = 0;
     int ok = 0;
@@ -210,7 +255,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('已加入下载：$ok/$total')),
     );
-    searchState.exitMultiSelect();
+    _searchState.exitMultiSelect();
   }
 
   Widget _buildCloudflarePrompt(BuildContext context) {

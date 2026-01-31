@@ -96,11 +96,15 @@ class BetterPlayerAdapter with WidgetsBindingObserver implements PlayerService {
         break;
 
       case BetterPlayerEventType.openFullscreen:
-        unawaited(enterFullscreen());
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 50), () {
+          return enterFullscreen();
+        }));
         break;
 
       case BetterPlayerEventType.hideFullscreen:
-        unawaited(exitFullscreen());
+        unawaited(Future<void>.delayed(const Duration(milliseconds: 50), () {
+          return exitFullscreen();
+        }));
         break;
 
       case BetterPlayerEventType.pipStart:
@@ -135,11 +139,18 @@ class BetterPlayerAdapter with WidgetsBindingObserver implements PlayerService {
     bool autoPlay = true,
   }) {
     final pipEnabled = Platform.isAndroid || Platform.isIOS;
+    final fullscreenMode = settingsState.settings.value.fullscreenOrientationMode;
     return BetterPlayerConfiguration(
       autoPlay: autoPlay,
       startAt: startPosition,
       fit: BoxFit.contain,
       autoDispose: false,
+      autoDetectFullscreenDeviceOrientation:
+          fullscreenMode == FullscreenOrientationMode.byVideoSize,
+      deviceOrientationsOnFullScreen:
+          _fullscreenOrientationsForConfig(fullscreenMode),
+      deviceOrientationsAfterFullScreen: const <DeviceOrientation>[],
+      systemOverlaysAfterFullScreen: SystemUiOverlay.values,
       controlsConfiguration: BetterPlayerControlsConfiguration(
         enablePlayPause: true,
         enableFullscreen: true,
@@ -158,6 +169,39 @@ class BetterPlayerAdapter with WidgetsBindingObserver implements PlayerService {
       ),
       allowedScreenSleep: false,
     );
+  }
+
+  List<DeviceOrientation> _fullscreenOrientationsForConfig(
+    FullscreenOrientationMode mode,
+  ) {
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      return const <DeviceOrientation>[
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ];
+    }
+    return switch (mode) {
+      FullscreenOrientationMode.portrait => const <DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+        ],
+      FullscreenOrientationMode.landscape => const <DeviceOrientation>[
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+      FullscreenOrientationMode.keepCurrent =>
+        (_lastOrientation == Orientation.portrait)
+            ? const <DeviceOrientation>[DeviceOrientation.portraitUp]
+            : const <DeviceOrientation>[
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ],
+      FullscreenOrientationMode.byVideoSize => const <DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ],
+    };
   }
 
   @override

@@ -1,7 +1,7 @@
 // 初始化和系统相关 API
 
 use crate::api::{cache, download};
-use crate::core::{network, storage};
+use crate::core::{network, otlp, storage};
 use flutter_rust_bridge::frb;
 use std::fs;
 use std::io;
@@ -49,6 +49,10 @@ pub async fn init_app(data_path: String) -> anyhow::Result<()> {
     storage::init_db(Some(&db_path))?;
     storage::reset_running_downloads()?;
     download::resume_queued_downloads().await?;
+
+    if let Err(e) = otlp::init().await {
+        tracing::debug!("OTLP init failed: {e:?}");
+    }
 
     // 加载保存的 Cookies
     load_saved_cookies().await?;

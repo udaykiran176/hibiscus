@@ -5,12 +5,28 @@ import 'package:signals/signals_flutter.dart';
 import 'package:hibiscus/src/rust/api/search.dart' as search_api;
 import 'package:hibiscus/src/rust/api/models.dart';
 
-/// 搜索状态
+/// 搜索状态（可实例化，支持多个独立的搜索上下文）
 class SearchState {
-  // 单例
-  static final SearchState _instance = SearchState._();
+  /// 是否是全局单例（用于首页）
+  final bool isSingleton;
+
+  // 单例模式（首页使用）
+  static final SearchState _instance = SearchState._(isSingleton: true);
   factory SearchState() => _instance;
-  SearchState._();
+  
+  // 私有构造函数
+  SearchState._({this.isSingleton = false}) {
+    _init();
+  }
+  
+  /// 创建独立的搜索状态实例（用于发现页）
+  factory SearchState.independent({ApiSearchFilters? initialFilters}) {
+    final state = SearchState._(isSingleton: false);
+    if (initialFilters != null) {
+      state.filters.value = initialFilters;
+    }
+    return state;
+  }
 
   // 过滤条件
   final filters = signal<ApiSearchFilters?>(null);
@@ -64,6 +80,12 @@ class SearchState {
     selectedVideoIds.value = next;
   }
 
+  /// 私有初始化方法
+  void _init() {
+    // 仅在单例模式下延迟初始化
+    // 独立实例需要手动调用 init()
+  }
+
   /// 初始化默认过滤条件
   Future<void> init() async {
     if (filters.value != null) return;
@@ -85,6 +107,14 @@ class SearchState {
         duration: null,
         page: 1,
       );
+    }
+  }
+  
+  /// 清理资源（用于独立实例）
+  void dispose() {
+    if (!isSingleton) {
+      // 独立实例可以清理资源
+      // 单例不应该被清理
     }
   }
 

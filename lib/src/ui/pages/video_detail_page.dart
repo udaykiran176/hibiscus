@@ -742,20 +742,40 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
 
     return Row(
       children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: theme.colorScheme.primaryContainer,
-          backgroundImage:
-              author.avatarUrl != null ? NetworkImage(author.avatarUrl!) : null,
-          child: author.avatarUrl == null ? const Icon(Icons.person) : null,
+        // 头像 - 点击搜索作者
+        InkWell(
+          onTap: () => context.pushDiscoverWithQuery(
+            author.name,
+            title: '作者: ${author.name}',
+          ),
+          borderRadius: BorderRadius.circular(20),
+          child: CircleAvatar(
+            radius: 20,
+            backgroundColor: theme.colorScheme.primaryContainer,
+            backgroundImage:
+                author.avatarUrl != null ? NetworkImage(author.avatarUrl!) : null,
+            child: author.avatarUrl == null ? const Icon(Icons.person) : null,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(author.name, style: theme.textTheme.titleSmall),
-            ],
+          child: InkWell(
+            onTap: () => context.pushDiscoverWithQuery(
+              author.name,
+              title: '作者: ${author.name}',
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(author.name, style: theme.textTheme.titleSmall),
+                Text(
+                  '点击查看更多',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         FilledButton.tonal(
@@ -778,9 +798,8 @@ class _VideoDetailPageState extends State<VideoDetailPage> {
         return ActionChip(
           label: Text(tag),
           onPressed: () {
-            // 用标签搜索
-            searchState.toggleTag(tag);
-            context.goHome();
+            // 导航到独立的发现页
+            context.pushDiscoverWithTags([tag], title: tag);
           },
         );
       }).toList(),

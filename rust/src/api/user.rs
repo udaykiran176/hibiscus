@@ -5,8 +5,11 @@ use crate::api::models::{
     ApiSubscriptionsPage, ApiUserInfo, ApiVideoCard,
 };
 use crate::core::parser;
-use crate::core::{network, storage};
+use crate::core::{network, otlp, storage};
 use flutter_rust_bridge::frb;
+use opentelemetry::KeyValue;
+
+const LAST_USERNAME_KEY: &str = "user.last_username";
 
 /// 列表类型常量
 pub const LIST_TYPE_LIKE: &str = "LL"; // 喜欢的影片
@@ -22,6 +25,19 @@ pub async fn get_current_user() -> anyhow::Result<Option<ApiUserInfo>> {
             let Some(name) = home.username else {
                 return Ok(None);
             };
+            // Update telemetry identity when we actually obtain the username.
+            // let prev = storage::get_setting(LAST_USERNAME_KEY).unwrap_or_default();
+            // let changed = prev.as_deref().map(|s| s != name).unwrap_or(true);
+            let _ = storage::save_setting(LAST_USERNAME_KEY, &name);
+            otlp::update_span_attribute("user.account", Some(name.clone())).await;
+            // if changed {
+                otlp::record_event(
+                    "auth",
+                    "user.login",
+                    vec![KeyValue::new("user.account", name.clone())],
+                )
+                .await;
+            // }
             Ok(Some(ApiUserInfo {
                 id: String::new(),
                 name,
@@ -50,6 +66,8 @@ pub async fn is_logged_in() -> anyhow::Result<bool> {
 pub async fn logout() -> anyhow::Result<bool> {
     storage::clear_cookies()?;
     let _ = network::clear_cookies();
+    otlp::update_span_attribute("user.account", None).await;
+    //otlp::record_event("auth", "user.logout", vec![]).await;
     Ok(true)
 }
 
@@ -529,10 +547,14 @@ pub async fn login(
                     if html.contains("input[name=_token]") {
                         Ok(false)
                     } else {
+                        //otlp::record_event("auth", "user.login", vec![]).await;
                         Ok(true)
                     }
                 }
-                Err(_) => Ok(true), // 404 或重定向说明已登录
+                Err(_) => {
+                    //otlp::record_event("auth", "user.login", vec![]).await;
+                    Ok(true)
+                } // 404 或重定向说明已登录
             }
         }
         Err(e) => {

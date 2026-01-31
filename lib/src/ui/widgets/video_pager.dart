@@ -147,12 +147,16 @@ class _VideoPagerState extends State<VideoPager> {
   Widget build(BuildContext context) {
     if (_videos.isEmpty) {
       if (_isLoading) {
-        return const Center(child: CircularProgressIndicator());
+        return _buildRefreshablePlaceholder(
+          child: const Center(child: CircularProgressIndicator()),
+        );
       }
       if (_error != null) {
-        return _buildErrorState(context, _error!);
+        return _buildRefreshablePlaceholder(
+          child: _buildErrorState(context, _error!),
+        );
       }
-      return _buildEmptyState(context);
+      return _buildRefreshablePlaceholder(child: _buildEmptyState(context));
     }
 
     final showViews = _videos.any((v) => v.views != null);
@@ -216,6 +220,19 @@ class _VideoPagerState extends State<VideoPager> {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRefreshablePlaceholder({required Widget child}) {
+    return RefreshIndicator(
+      onRefresh: _loadFirstPage,
+      child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(hasScrollBody: false, child: child),
+        ],
       ),
     );
   }

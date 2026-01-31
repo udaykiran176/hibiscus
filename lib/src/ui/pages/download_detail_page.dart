@@ -371,8 +371,14 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children:
-                            task.tags.map((t) => Chip(label: Text(t))).toList(),
+                        children: task.tags.map((tag) {
+                          return ActionChip(
+                            label: Text(tag),
+                            onPressed: () {
+                              context.pushDiscoverWithTags([tag], title: tag);
+                            },
+                          );
+                        }).toList(),
                       ),
                     ],
                   ],
@@ -428,19 +434,43 @@ class _DownloadDetailPageState extends State<DownloadDetailPage> {
       avatar = _fallbackAvatar(theme);
     }
 
-    return Row(
-      children: [
-        avatar,
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            name,
-            style: theme.textTheme.bodyMedium,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+    return InkWell(
+      onTap: name.isNotEmpty
+          ? () => context.pushDiscoverWithQuery(
+                name,
+                title: '作者: $name',
+              )
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            avatar,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: theme.textTheme.bodyMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (name.isNotEmpty)
+                    Text(
+                      '点击查看更多',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

@@ -37,7 +37,7 @@ class AppSettings {
     this.fullscreenOrientationMode = FullscreenOrientationMode.landscape,
     this.proxyUrl,
     this.enableProxy = false,
-    this.preferredPlayerType = PlayerType.betterPlayer,
+    this.preferredPlayerType = PlayerType.mediaKit,
     this.navigationType = NavigationType.adaptive,
     this.appOrientation = AppOrientation.automatic,
   });

@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:hibiscus/src/rust/api/models.dart';
 import 'package:hibiscus/src/ui/pages/download_detail_page.dart';
 import 'package:hibiscus/src/ui/pages/video_detail_page.dart';
+import 'package:hibiscus/src/ui/pages/home_page.dart';
 import 'package:hibiscus/src/ui/shell/app_shell.dart';
 import 'package:hibiscus/src/state/nav_state.dart';
+import 'package:hibiscus/src/state/search_state.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -70,6 +72,67 @@ extension NavigatorExtension on BuildContext {
     Navigator.of(this).push(
       MaterialPageRoute(
         builder: (context) => DownloadDetailPage(task: task),
+      ),
+    );
+  }
+
+  /// 导航到发现页（带标签） - 完全复用首页
+  void pushDiscoverWithTags(List<String> tags, {String? title}) {
+    Navigator.of(this).push(
+      MaterialPageRoute(
+        builder: (context) => HomePage(
+          title: title ?? (tags.length == 1 ? tags.first : '发现'),
+          searchState: SearchState.independent(
+            initialFilters: const ApiSearchFilters(
+              query: null,
+              genre: null,
+              tags: [],
+              broadMatch: false,
+              sort: null,
+              year: null,
+              month: null,
+              date: null,
+              duration: null,
+              page: 1,
+            ),
+          )..filters.value = ApiSearchFilters(
+              query: null,
+              genre: null,
+              tags: tags,
+              broadMatch: false,
+              sort: null,
+              year: null,
+              month: null,
+              date: null,
+              duration: null,
+              page: 1,
+            ),
+        ),
+      ),
+    );
+  }
+
+  /// 导航到发现页（搜索作者） - 完全复用首页
+  void pushDiscoverWithQuery(String query, {String? title}) {
+    Navigator.of(this).push(
+      MaterialPageRoute(
+        builder: (context) => HomePage(
+          title: title ?? '搜索: $query',
+          searchState: SearchState.independent(
+            initialFilters: ApiSearchFilters(
+              query: query,
+              genre: null,
+              tags: const [],
+              broadMatch: false,
+              sort: null,
+              year: null,
+              month: null,
+              date: null,
+              duration: null,
+              page: 1,
+            ),
+          ),
+        ),
       ),
     );
   }

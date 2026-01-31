@@ -1,5 +1,6 @@
 // 设置页
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,7 +14,9 @@ import 'package:hibiscus/src/rust/api/settings.dart' as settings_api;
 import 'package:hibiscus/src/services/image_cache_service.dart';
 import 'package:hibiscus/src/services/log_export_service.dart';
 import 'package:hibiscus/src/services/player/player_service.dart';
+import 'package:hibiscus/src/services/recommendations_service.dart';
 import 'package:hibiscus/src/services/update_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -33,6 +36,8 @@ class _SettingsPageState extends State<SettingsPage> {
       userState.checkLoginStatus();
     }
     _loadCacheSize();
+    unawaited(preloadUpdateRepo());
+    unawaited(refreshRecommendations());
   }
 
   Future<void> _loadCacheSize() async {
@@ -64,10 +69,20 @@ class _SettingsPageState extends State<SettingsPage> {
         final loginStatus = userState.loginStatus.value;
         final user = userState.userInfo.value;
         final updateStatus = updateStatusSignal.value;
-        final updateEnabled = updateCheckEnabled;
+        final updateEnabled = updateRepoSpecSignal.value != null;
+        final recommendations = recommendationsSignal.value;
+        final recommendationsLoading = recommendationsLoadingSignal.value;
 
         return ListView(
           children: [
+            if (recommendationsLoading || recommendations.isNotEmpty) ...[
+              _SectionHeader(title: '推荐'),
+              _buildRecommendationsCard(
+                recommendations,
+                loading: recommendationsLoading,
+              ),
+              const Divider(),
+            ],
             _buildUserHeader(context, theme, loginStatus, user),
             const Divider(),
             _SectionHeader(title: '更新'),
@@ -79,8 +94,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 isLabelVisible: updateEnabled && updateStatus.hasUpdate,
                 child: const Icon(Icons.system_update_alt),
               ),
-              enabled: updateEnabled,
-              onTap: updateEnabled ? () => manualCheckUpdate(context) : null,
+              onTap: () => manualCheckUpdate(context),
             ),
 
             const Divider(),
@@ -507,7 +521,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   String _updateStatusLabel(UpdateStatus status, bool enabled) {
-    if (!enabled) return '未启用版本检查';
+    if (!enabled) return '未获取更新源';
     if (status.hasUpdate) {
       return '发现新版本：${status.latestVersion}';
     }
@@ -602,6 +616,45 @@ class _SettingsPageState extends State<SettingsPage> {
               child: const Text('登录'),
             ),
     );
+  }
+
+  Widget _buildRecommendationsCard(
+    List<RecommendationItem> items, {
+    required bool loading,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        children: [
+          if (items.isEmpty)
+            ListTile(
+              title: Text(loading ? '正在加载…' : '暂无推荐'),
+              trailing: loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+            ),
+          for (var i = 0; i < items.length; i++)
+            ListTile(
+              title: Text(items[i].title),
+              subtitle: (items[i].subtitle != null && items[i].subtitle!.isNotEmpty)
+                  ? Text(items[i].subtitle!)
+                  : null,
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => _openExternalUrl(items[i].url),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openExternalUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 

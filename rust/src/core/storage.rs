@@ -753,6 +753,119 @@ pub fn delete_setting(key: &str) -> Result<()> {
     Ok(())
 }
 
+// ========== Telemetry Queue (OTLP) ==========
+
+#[derive(Debug, Clone)]
+pub(crate) struct TelemetryRecord {
+    pub id: i64,
+    pub payload_base64: String,
+    pub _retry_count: i32,
+}
+
+pub(crate) fn enqueue_telemetry(payload_base64: &str) -> Result<()> {
+    let db = get_db()?;
+    let now = chrono::Utc::now().timestamp();
+    db.execute(
+        "INSERT INTO telemetry_queue (payload_base64, retry_count, created_at) VALUES (?1, 0, ?2)",
+        params![payload_base64, now],
+    )?;
+    Ok(())
+}
+
+pub(crate) fn dequeue_telemetry_batch(limit: u32) -> Result<Vec<TelemetryRecord>> {
+    let db = get_db()?;
+    let mut stmt = db.prepare(
+        "SELECT id, payload_base64, retry_count
+         FROM telemetry_queue
+         ORDER BY created_at ASC
+         LIMIT ?1",
+    )?;
+    let rows = stmt.query_map(params![limit], |row| {
+        Ok(TelemetryRecord {
+            id: row.get(0)?,
+            payload_base64: row.get(1)?,
+            _retry_count: row.get(2)?,
+        })
+    })?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
+pub(crate) fn delete_telemetry_by_ids(ids: &[i64]) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let db = get_db()?;
+    let mut sql = String::from("DELETE FROM telemetry_queue WHERE id IN (");
+    for (i, _) in ids.iter().enumerate() {
+        if i > 0 {
+            sql.push(',');
+        }
+        sql.push('?');
+        sql.push_str(&(i + 1).to_string());
+    }
+    sql.push(')');
+    let params = rusqlite::params_from_iter(ids.iter());
+    db.execute(&sql, params)?;
+    Ok(())
+}
+
+pub(crate) fn increment_telemetry_retry_count(ids: &[i64]) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let db = get_db()?;
+    let mut sql = String::from(
+        "UPDATE telemetry_queue SET retry_count = retry_count + 1 WHERE id IN (",
+    );
+    for (i, _) in ids.iter().enumerate() {
+        if i > 0 {
+            sql.push(',');
+        }
+        sql.push('?');
+        sql.push_str(&(i + 1).to_string());
+    }
+    sql.push(')');
+    let params = rusqlite::params_from_iter(ids.iter());
+    db.execute(&sql, params)?;
+    Ok(())
+}
+
+pub(crate) fn delete_telemetry_exceeded_retry(max_retry: i32) -> Result<usize> {
+    let db = get_db()?;
+    Ok(db.execute(
+        "DELETE FROM telemetry_queue WHERE retry_count > ?1",
+        params![max_retry],
+    )?)
+}
+
+pub(crate) fn telemetry_count() -> Result<i64> {
+    let db = get_db()?;
+    let mut stmt = db.prepare("SELECT COUNT(1) FROM telemetry_queue")?;
+    Ok(stmt.query_row([], |row| row.get(0))?)
+}
+
+pub(crate) fn cleanup_telemetry_keep_latest(max_records: i64) -> Result<usize> {
+    if max_records <= 0 {
+        return Ok(0);
+    }
+    let db = get_db()?;
+    Ok(db.execute(
+        r#"
+        DELETE FROM telemetry_queue
+        WHERE id IN (
+          SELECT id FROM telemetry_queue
+          ORDER BY created_at DESC
+          LIMIT -1 OFFSET ?1
+        )
+        "#,
+        params![max_records],
+    )?)
+}
+
 // ========== Cookies ==========
 
 /// 保存 Cookie

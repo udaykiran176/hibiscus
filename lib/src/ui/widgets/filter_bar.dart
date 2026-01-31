@@ -146,11 +146,13 @@ class FilterOptions {
 class FilterBar extends StatefulWidget {
   final VoidCallback? onBatchDownload;
   final VoidCallback? onEnterMultiSelect;
+  final SearchState? searchState; // 可选的独立搜索状态
 
   const FilterBar({
     super.key,
     this.onBatchDownload,
     this.onEnterMultiSelect,
+    this.searchState,
   });
 
   @override
@@ -158,39 +160,42 @@ class FilterBar extends StatefulWidget {
 }
 
 class _FilterBarState extends State<FilterBar> {
+  // 获取实际使用的搜索状态
+  SearchState get _searchState => widget.searchState ?? searchState;
+  
   // 使用状态管理中的过滤条件
-  String? get _selectedGenre => searchState.filters.value?.genre;
-  String? get _selectedSort => searchState.filters.value?.sort;
-  String? get _selectedYear => searchState.filters.value?.year;
-  String? get _selectedMonth => searchState.filters.value?.month;
-  String? get _selectedDuration => searchState.filters.value?.duration;
-  Set<String> get _selectedTags => Set<String>.from(searchState.filters.value?.tags ?? []);
-  bool get _broadMatch => searchState.filters.value?.broadMatch ?? false;
+  String? get _selectedGenre => _searchState.filters.value?.genre;
+  String? get _selectedSort => _searchState.filters.value?.sort;
+  String? get _selectedYear => _searchState.filters.value?.year;
+  String? get _selectedMonth => _searchState.filters.value?.month;
+  String? get _selectedDuration => _searchState.filters.value?.duration;
+  Set<String> get _selectedTags => Set<String>.from(_searchState.filters.value?.tags ?? []);
+  bool get _broadMatch => _searchState.filters.value?.broadMatch ?? false;
 
   void _updateGenre(String? value) {
-    searchState.updateGenre(value);
+    _searchState.updateGenre(value);
   }
 
   void _updateSort(String? value) {
-    searchState.updateSort(value);
+    _searchState.updateSort(value);
   }
 
   void _updateYear(String? value) {
-    searchState.updateYear(value);
+    _searchState.updateYear(value);
   }
 
   void _updateDuration(String? value) {
-    searchState.updateDuration(value);
+    _searchState.updateDuration(value);
   }
 
   void _updateTags(Set<String> tags, bool broadMatch) {
-    if (searchState.filters.value == null) return;
-    searchState.filters.value = searchState.filters.value!.copyWith(
+    if (_searchState.filters.value == null) return;
+    _searchState.filters.value = _searchState.filters.value!.copyWith(
       tags: tags.toList(),
       broadMatch: broadMatch,
     );
-    searchState.needsCloudflare.value = false;
-    searchState.videos.value = [];
+    _searchState.needsCloudflare.value = false;
+    _searchState.videos.value = [];
   }
 
   @override
@@ -198,9 +203,9 @@ class _FilterBarState extends State<FilterBar> {
     final theme = Theme.of(context);
 
     return Watch((context) {
-      final isMultiSelect = searchState.isMultiSelectMode.value;
-      final selectedCount = searchState.selectedVideoIds.value.length;
-      final quality = searchState.multiSelectQuality.value;
+      final isMultiSelect = _searchState.isMultiSelectMode.value;
+      final selectedCount = _searchState.selectedVideoIds.value.length;
+      final quality = _searchState.multiSelectQuality.value;
 
       if (isMultiSelect) {
         return Container(
@@ -218,14 +223,14 @@ class _FilterBarState extends State<FilterBar> {
           child: Row(
             children: [
               TextButton.icon(
-                onPressed: () => searchState.exitMultiSelect(),
+                onPressed: () => _searchState.exitMultiSelect(),
                 icon: const Icon(Icons.close),
                 label: const Text('取消'),
               ),
               const SizedBox(width: 8),
               PopupMenuButton<String>(
                 tooltip: '下载清晰度',
-                onSelected: (value) => searchState.multiSelectQuality.value = value,
+                onSelected: (value) => _searchState.multiSelectQuality.value = value,
                 itemBuilder: (context) {
                   const items = ['1080P', '720P', '480P', '360P', 'auto'];
                   return items
@@ -346,7 +351,7 @@ class _FilterBarState extends State<FilterBar> {
                 if (widget.onEnterMultiSelect != null) {
                   widget.onEnterMultiSelect!();
                 } else {
-                  searchState.enterMultiSelect();
+                  _searchState.enterMultiSelect();
                 }
               },
               icon: const Icon(Icons.playlist_add_check),

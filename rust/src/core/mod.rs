@@ -6,3 +6,4 @@ pub mod parser;
 pub mod runtime;
 pub mod storage;
 pub mod webdav;
+pub mod otlp;
