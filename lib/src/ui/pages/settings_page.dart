@@ -19,6 +19,7 @@ import 'package:hibiscus/src/services/log_export_service.dart';
 import 'package:hibiscus/src/services/player/player_service.dart';
 import 'package:hibiscus/src/services/recommendations_service.dart';
 import 'package:hibiscus/src/services/update_service.dart';
+import 'package:hibiscus/browser/simple_browser.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -143,6 +144,41 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _showUserAgentMenu(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('重新获取 UA'),
+                subtitle: const Text('打开浏览器页面自动捕获新的 User-Agent'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _recaptureUserAgent(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _recaptureUserAgent(BuildContext context) async {
+    final captured = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (context) => const SimpleBrowserPage()),
+    );
+    if (captured == true && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已更新 User-Agent')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -171,19 +207,18 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
             _buildUserHeader(context, theme, loginStatus, user),
             const Divider(),
-            // TODO: 暂时注释掉手动检查更新功能
-            // _SectionHeader(title: '更新'),
-            // ListTile(
-            //   title: const Text('检查更新'),
-            //   subtitle: Text(_updateStatusLabel(updateStatus, updateEnabled)),
-            //   trailing: Badge(
-            //     label: const Text('新', style: TextStyle(fontSize: 10)),
-            //     isLabelVisible: updateEnabled && updateStatus.hasUpdate,
-            //     child: const Icon(Icons.system_update_alt),
-            //   ),
-            //   onTap: () => manualCheckUpdate(context),
-            // ),
-            // const Divider(),
+            _SectionHeader(title: '更新'),
+            ListTile(
+              title: const Text('检查更新'),
+              subtitle: Text(_updateStatusLabel(updateStatus, updateEnabled)),
+              trailing: Badge(
+                label: const Text('新', style: TextStyle(fontSize: 10)),
+                isLabelVisible: updateEnabled && updateStatus.hasUpdate,
+                child: const Icon(Icons.system_update_alt),
+              ),
+              onTap: () => manualCheckUpdate(context),
+            ),
+            const Divider(),
 
             // 外观设置
             _SectionHeader(title: '外观'),
@@ -301,11 +336,15 @@ class _SettingsPageState extends State<SettingsPage> {
             Watch((context) {
               final ua = browserState.userAgent.value;
               return ListTile(
-                title: const Text('User-Agent (只读)'),
+                title: const Text('User-Agent'),
                 subtitle: Text(
                   ua ?? '尚未捕获，请先打开浏览器页面',
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: () => _showUserAgentMenu(context),
                 ),
               );
             }),

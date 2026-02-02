@@ -418,63 +418,6 @@ class _BrowserPageState extends State<BrowserPage>
               ),
             ),
             const Divider(height: 1),
-            // 激活提示
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, 
-                        color: colorScheme.onPrimaryContainer,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '激活应用',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '在地址栏输入 hibi://start 并回车即可进入主应用。',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.content_copy, size: 16),
-                    label: const Text('复制激活地址'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colorScheme.onPrimaryContainer,
-                      side: BorderSide(color: colorScheme.onPrimaryContainer),
-                    ),
-                    onPressed: () {
-                      Clipboard.setData(
-                        const ClipboardData(text: 'hibi://start'),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('已复制到剪贴板'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
             // 菜单列表
             ListTile(
               leading: const Icon(Icons.star_outline),
